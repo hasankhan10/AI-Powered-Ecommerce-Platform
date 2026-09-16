@@ -1,26 +1,103 @@
+@import url('https://api.fontshare.com/v2/css?f[]=switzer@300,400,500,600,700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #12100e;
+  --bg-deep: #0a0908;
+  --surface-light: #f4efe6;
+  --text-ondark: #f3eee8;
+  --text-onlight: #1c1917;
+  --accent-brass: #c6a87d;
+  --accent-brass-hover: #dbb98c;
+  --accent-wine: #581c28;
+  --hairline: rgba(243, 238, 232, 0.12);
+  --hairline-dark: rgba(28, 25, 23, 0.15);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface-light: var(--surface-light);
+  --color-text-ondark: var(--text-ondark);
+  --color-text-onlight: var(--text-onlight);
+  --color-accent-brass: var(--accent-brass);
+  --color-accent-brass-hover: var(--accent-brass-hover);
+  --color-accent-wine: var(--accent-wine);
+  --color-hairline: var(--hairline);
+  --color-hairline-dark: var(--hairline-dark);
+
+  --font-serif: var(--font-fraunces), serif;
+  --font-sans: 'Switzer', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+  color: var(--text-ondark);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-ondark);
+  min-height: 100vh;
+  overflow-x: hidden;
 }
+
+/* Ensure all buttons, links, and interactive elements have pointer cursor */
+button,
+[role="button"],
+a,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+select,
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+/* Hairline utility borders */
+.border-hairline {
+  border-color: var(--hairline);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(198, 168, 125, 0.3);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(198, 168, 125, 0.6);
+}
+
+/* Reduced Motion Accessibility Overrides */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

@@ -1,0 +1,402 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATALOGUE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  description     String?
+  metaTitle       String?
+  metaDescription String?
+  ogImageUrl      String?
+  basePrice       Decimal            @db.Decimal(10, 2)
+  categoryId      String
+  status          ProductStatus      @default(DRAFT)
+  /// pgvector embedding — 1536 dimensions (text-embedding-004)
+  embedding       Unsupported("vector(1536)")?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  category           Category            @relation(fields: [categoryId], references: [id])
+  variants           ProductVariant[]
+  images             ProductImage[]
+  orderItems         OrderItem[]
+  cartItems          CartItem[]
+  contentGenerations ContentGeneration[]
+  assistantMessages  AssistantMessage[]  @relation("ProductRefs")
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([slug])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  sku       String   @unique
+  size      String?
+  color     String?
+  price     Decimal  @db.Decimal(10, 2)
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  inventoryLogs InventoryLog[]
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  altText   String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMERS & ADDRESSES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Customer {
+  id             String    @id @default(cuid())
+  supabaseUserId String    @unique
+  email          String    @unique
+  name           String?
+  phone          String?
+  avatarUrl      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  addresses              Address[]
+  carts                  Cart[]
+  orders                 Order[]
+  assistantConversations AssistantConversation[]
+  supportTickets         SupportTicket[]
+
+  @@index([supabaseUserId])
+  @@index([email])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  pincode    String
+  country    String   @default("India")
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CART
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Cart {
+  id         String     @id @default(cuid())
+  customerId String?
+  sessionId  String?    @unique // for guest carts
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  customer  Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@index([customerId])
+  @@index([sessionId])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  variantId String
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique @default(cuid())
+  customerId      String
+  addressId       String?
+  status          OrderStatus   @default(PENDING)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  shipping        Decimal       @db.Decimal(10, 2) @default(0)
+  tax             Decimal       @db.Decimal(10, 2) @default(0)
+  total           Decimal       @db.Decimal(10, 2)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentProvider String?       // "razorpay"
+  paymentRef      String?       // Razorpay order ID
+  razorpayPaymentId String?
+  razorpaySignature String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customer Customer   @relation(fields: [customerId], references: [id])
+  address  Address?   @relation(fields: [addressId], references: [id])
+  items    OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([orderNumber])
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  variantId       String
+  productId       String
+  quantity        Int
+  priceAtPurchase Decimal  @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+  product Product        @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN USERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id             String    @id @default(cuid())
+  supabaseUserId String    @unique
+  email          String    @unique
+  name           String?
+  role           AdminRole @default(SUPPORT)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([supabaseUserId])
+}
+
+enum AdminRole {
+  SUPERADMIN
+  ADMIN
+  SUPPORT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI SHOPPING ASSISTANT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AssistantConversation {
+  id         String   @id @default(cuid())
+  customerId String?
+  sessionId  String?  // guest conversations
+  startedAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer?          @relation(fields: [customerId], references: [id])
+  messages AssistantMessage[]
+
+  @@index([customerId])
+  @@index([sessionId])
+}
+
+model AssistantMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String   // "user" | "assistant"
+  content        String   @db.Text
+  productRefs    Json?    // array of product IDs the assistant recommended
+  createdAt      DateTime @default(now())
+
+  conversation AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  products     Product[]             @relation("ProductRefs")
+
+  @@index([conversationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMER SUPPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id         String        @id @default(cuid())
+  customerId String
+  subject    String
+  status     TicketStatus  @default(OPEN)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  resolvedAt DateTime?
+
+  customer Customer         @relation(fields: [customerId], references: [id])
+  messages SupportMessage[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+enum TicketStatus {
+  OPEN
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  role      String   // "customer" | "assistant" | "agent"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI CONTENT & SEO
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ContentGeneration {
+  id            String              @id @default(cuid())
+  productId     String
+  type          ContentType
+  tone          String?             // "editorial" | "minimal" | "playful"
+  generatedText String              @db.Text
+  isPublished   Boolean             @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime            @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([type])
+}
+
+enum ContentType {
+  DESCRIPTION
+  SEO_TITLE
+  SEO_DESCRIPTION
+  SLUG_SUGGESTION
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+model InventoryLog {
+  id        String   @id @default(cuid())
+  variantId String
+  changeQty Int      // positive = restock, negative = sale/adjustment
+  reason    String   // "SALE" | "RESTOCK" | "ADJUSTMENT" | "RETURN"
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([variantId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTEGRATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntegrationConnection {
+  id        String              @id @default(cuid())
+  provider  String              // "razorpay" | "resend" | "shiprocket" | "whatsapp"
+  status    IntegrationStatus   @default(DISCONNECTED)
+  config    Json                @default("{}")  // stored encrypted / without secrets in UI
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([provider])
+  @@index([provider])
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
