@@ -1,28 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import {
-  Sparkles,
-  RefreshCw,
-  UploadCloud,
-  Check,
-  Copy,
-  ExternalLink,
-  Sliders,
-  FileText,
-  Clock,
-  Layers,
-  CheckCircle2,
-  AlertCircle,
-  History,
-  Info,
-} from 'lucide-react';
 import { toast } from '@/lib/store/useToast';
 import { ContentProductItem, GenerationHistoryItem } from '@/lib/db/content';
-import { CopyTone, TONE_DEFINITIONS } from '@/lib/ai/copywriter';
-import { brandConfig } from '@/config/brand.config';
+import { CopyTone } from '@/lib/ai/copywriter';
+import { ContentSelectorBar } from './ContentSelectorBar';
+import { ProductLiveCopyPreview } from './ProductLiveCopyPreview';
+import { AiCopyEditor } from './AiCopyEditor';
 
 interface ProductContentGeneratorProps {
   products: ContentProductItem[];
@@ -195,264 +179,44 @@ export function ProductContentGenerator({
   return (
     <div className="space-y-6">
       {/* 1. Control Header: Product & Tone Selector */}
-      <div className="border border-hairline bg-bg-deep p-4 sm:p-6 rounded-md shadow-sm">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Product Picker */}
-          <div className="lg:col-span-6 space-y-2">
-            <label className="text-[10px] uppercase tracking-[0.25em] text-accent-brass font-medium flex items-center gap-2">
-              <Layers size={14} /> Select Product to Write
-            </label>
-            <div className="relative">
-              <select
-                value={selectedProductId}
-                onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full appearance-none bg-bg-primary border border-hairline px-4 py-3 text-sm text-text-ondark focus:border-accent-brass focus:outline-none transition-colors"
-              >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-bg-primary text-text-ondark">
-                    {p.name} ({p.category}) — {brandConfig.currency.symbol}{p.basePrice}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Tone Selector */}
-          <div className="lg:col-span-6 space-y-2">
-            <label className="text-[10px] uppercase tracking-[0.25em] text-accent-brass font-medium flex items-center gap-2">
-              <Sliders size={14} /> Copywriting Tone
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['editorial', 'minimal', 'playful'] as CopyTone[]).map((tone) => {
-                const isSelected = selectedTone === tone;
-                return (
-                  <button
-                    key={tone}
-                    type="button"
-                    onClick={() => setSelectedTone(tone)}
-                    className={`py-2.5 px-3 text-center text-xs transition-all border ${
-                      isSelected
-                        ? 'border-accent-brass bg-accent-brass/15 text-accent-brass font-medium shadow-sm'
-                        : 'border-hairline bg-bg-primary/60 text-text-ondark/70 hover:border-text-ondark/30 hover:text-text-ondark'
-                    }`}
-                  >
-                    <span className="capitalize block">{tone}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Tone Description Subtitle */}
-        <div className="mt-4 pt-4 border-t border-hairline flex items-center justify-between text-xs text-text-ondark/60 font-light">
-          <p>
-            <strong className="text-text-ondark font-normal capitalize">{selectedTone} Tone:</strong>{' '}
-            {TONE_DEFINITIONS[selectedTone].description}
-          </p>
-          <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-accent-brass/90">
-            <Sparkles size={12} /> Powered by Google Gemini 2.5 Flash
-          </span>
-        </div>
-      </div>
+      <ContentSelectorBar
+        products={products}
+        selectedProductId={selectedProductId}
+        selectedTone={selectedTone}
+        onProductChange={handleProductChange}
+        onToneChange={setSelectedTone}
+      />
 
       {/* 2. Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Product Context & Current Live Copy (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="border border-hairline bg-bg-deep p-6 space-y-5">
-            {/* Product Card Summary */}
-            <div className="flex gap-4 items-start">
-              <div className="relative h-20 w-16 bg-bg-primary shrink-0 border border-hairline overflow-hidden">
-                <Image
-                  src={activeProduct.image}
-                  alt={activeProduct.name}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              </div>
-              <div className="space-y-1 flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-accent-brass">
-                    {activeProduct.category}
-                  </span>
-                  <Link
-                    href={`/product/${activeProduct.slug}`}
-                    target="_blank"
-                    className="text-[11px] text-accent-brass hover:underline flex items-center gap-1"
-                  >
-                    View PDP <ExternalLink size={12} />
-                  </Link>
-                </div>
-                <h3 className="font-serif text-lg text-text-ondark font-light truncate">
-                  {activeProduct.name}
-                </h3>
-                <p className="text-xs text-text-ondark/60 font-light">
-                  {brandConfig.currency.symbol}
-                  {activeProduct.basePrice.toLocaleString()} · Status: {activeProduct.status}
-                </p>
-              </div>
-            </div>
-
-            {/* Current Storefront Copy Card */}
-            <div className="border-t border-hairline pt-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-text-ondark/60 font-medium">
-                  Current Live PDP Description
-                </span>
-                {currentDescription ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20">
-                    <CheckCircle2 size={10} /> Active on Storefront
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 border border-amber-500/20">
-                    <AlertCircle size={10} /> Empty Description
-                  </span>
-                )}
-              </div>
-
-              <div className="bg-bg-primary/80 border border-hairline p-4 min-h-[160px] text-xs text-text-ondark/80 font-light leading-relaxed whitespace-pre-line">
-                {currentDescription || (
-                  <span className="italic text-text-ondark/40">
-                    This product does not currently have a published description. Generate one using the AI writing partner.
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+          <ProductLiveCopyPreview
+            product={activeProduct}
+            currentDescription={currentDescription}
+          />
         </div>
 
         {/* Right: AI Generation Studio & Live Editor (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="border border-hairline bg-bg-deep p-6 space-y-4">
-            {/* Header with Stats & Actions */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-accent-brass" />
-                <span className="text-xs font-serif text-text-ondark tracking-wide">
-                  AI Product Copywriter
-                </span>
-                {activeGenerationId && (
-                  <span className="text-[10px] uppercase tracking-wider text-accent-brass/80 bg-accent-brass/10 px-2 py-0.5 border border-accent-brass/20">
-                    New Draft Generated
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 text-[11px] text-text-ondark/50">
-                <span>{wordCount} words</span>
-                <span>·</span>
-                <span>{charCount} chars</span>
-                <button
-                  onClick={handleCopy}
-                  title="Copy copy text"
-                  className="hover:text-accent-brass text-text-ondark/70 flex items-center gap-1 ml-2 transition-colors"
-                >
-                  {copiedSuccess ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                  <span>{copiedSuccess ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Error Banner */}
-            {errorMessage && (
-              <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-300 text-xs flex items-start gap-2">
-                <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {/* Success Banner */}
-            {publishSuccess && (
-              <div className="p-3 bg-emerald-900/20 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} />
-                  <span>
-                    Successfully published to PostgreSQL and revalidated live PDP!
-                  </span>
-                </div>
-                <Link
-                  href={`/product/${activeProduct.slug}`}
-                  target="_blank"
-                  className="underline underline-offset-2 text-emerald-200 hover:text-white"
-                >
-                  View Live →
-                </Link>
-              </div>
-            )}
-
-            {/* Live Copy Textarea */}
-            <div className="relative">
-              <textarea
-                value={generatedText || currentDescription}
-                onChange={(e) => setGeneratedText(e.target.value)}
-                placeholder="Click 'Generate Copy' below to have Google Gemini write bespoke luxury editorial descriptions..."
-                rows={8}
-                disabled={isGenerating}
-                className="w-full bg-bg-primary border border-hairline p-4 text-xs font-light text-text-ondark leading-relaxed focus:border-accent-brass focus:outline-none transition-colors resize-y disabled:opacity-50"
-              />
-              {isGenerating && (
-                <div className="absolute inset-0 bg-bg-primary/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-accent-brass">
-                  <RefreshCw size={24} className="animate-spin text-accent-brass" />
-                  <span className="text-xs tracking-widest uppercase font-medium">
-                    Crafting {selectedTone} Copy...
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Actions Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-3">
-              {/* Generate / Regenerate Action */}
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={isGenerating || isPublishing}
-                className="flex items-center gap-2 px-5 py-2.5 bg-bg-primary hover:bg-bg-deep border border-accent-brass/50 text-accent-brass text-xs uppercase tracking-[0.2em] font-medium transition-all hover:border-accent-brass disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" /> Generating...
-                  </>
-                ) : generatedText ? (
-                  <>
-                    <RefreshCw size={14} /> Regenerate Copy
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={14} /> Generate with Gemini
-                  </>
-                )}
-              </button>
-
-              {/* Publish Action */}
-              <button
-                type="button"
-                onClick={handlePublish}
-                disabled={isPublishing || isGenerating || (!generatedText && !currentDescription)}
-                className={`flex items-center gap-2 px-6 py-2.5 text-xs uppercase tracking-[0.2em] font-medium transition-all ${
-                  publishSuccess
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-accent-brass text-bg-primary hover:bg-accent-brass-hover disabled:opacity-40 disabled:cursor-not-allowed'
-                }`}
-              >
-                {isPublishing ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" /> Publishing...
-                  </>
-                ) : publishSuccess ? (
-                  <>
-                    <Check size={14} /> Published Live!
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud size={14} /> Publish to Storefront
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          <AiCopyEditor
+            productSlug={activeProduct.slug}
+            generatedText={generatedText}
+            currentDescription={currentDescription}
+            activeGenerationId={activeGenerationId}
+            selectedTone={selectedTone}
+            isGenerating={isGenerating}
+            isPublishing={isPublishing}
+            publishSuccess={publishSuccess}
+            copiedSuccess={copiedSuccess}
+            errorMessage={errorMessage}
+            wordCount={wordCount}
+            charCount={charCount}
+            onTextChange={setGeneratedText}
+            onCopy={handleCopy}
+            onGenerate={handleGenerate}
+            onPublish={handlePublish}
+          />
         </div>
       </div>
     </div>

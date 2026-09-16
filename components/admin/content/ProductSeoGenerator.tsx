@@ -1,28 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Search,
   Sparkles,
   RefreshCw,
   UploadCloud,
   Check,
-  Copy,
-  ExternalLink,
-  Smartphone,
-  Monitor,
   CheckCircle2,
   AlertCircle,
-  Info,
-  Clock,
-  Code,
   Layers,
 } from 'lucide-react';
 import { toast } from '@/lib/store/useToast';
 import { ContentProductItem, GenerationHistoryItem } from '@/lib/db/content';
 import { brandConfig } from '@/config/brand.config';
+import { GoogleSerpSimulator } from './GoogleSerpSimulator';
+import { JsonLdModal } from './JsonLdModal';
 
 interface ProductSeoGeneratorProps {
   products: ContentProductItem[];
@@ -50,17 +43,15 @@ export function ProductSeoGenerator({
       brandConfig.seo.defaultDescription
   );
   const [slug, setSlug] = useState<string>(activeProduct?.slug || '');
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [showJsonLdModal, setShowJsonLdModal] = useState<boolean>(false);
 
   // Status State
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [publishSuccess, setPublishSuccess] = useState<boolean>(false);
-  const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Title & Desc Generation IDs for DB linking
+  // Generation IDs for DB linking
   const [titleGenId, setTitleGenId] = useState<string | undefined>();
   const [descGenId, setDescGenId] = useState<string | undefined>();
 
@@ -84,7 +75,6 @@ export function ProductSeoGenerator({
     }
   };
 
-  // 1. Generate SEO Metadata with Gemini
   const handleGenerateSeo = async () => {
     if (!activeProduct) return;
     setIsGenerating(true);
@@ -105,23 +95,16 @@ export function ProductSeoGenerator({
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to generate SEO metadata');
-      }
+      if (!res.ok) throw new Error(data.error || 'Failed to generate SEO metadata');
 
       setMetaTitle(data.seo.metaTitle);
       setMetaDescription(data.seo.metaDescription);
-      if (data.seo.slug) {
-        setSlug(data.seo.slug);
-      }
+      if (data.seo.slug) setSlug(data.seo.slug);
       setTitleGenId(data.titleGenId);
       setDescGenId(data.descGenId);
 
-      toast.success('AI SEO metadata generated', {
-        title: 'SEO Ready',
-      });
+      toast.success('AI SEO metadata generated', 'SEO Ready');
 
-      // Refresh history list if parent provided handler
       if (onHistoryUpdate) {
         fetchHistory(activeProduct.id);
       }
@@ -133,7 +116,6 @@ export function ProductSeoGenerator({
     }
   };
 
-  // 2. Publish SEO to PostgreSQL & Storefront
   const handlePublishSeo = async () => {
     if (!activeProduct) return;
     setIsPublishing(true);
@@ -154,18 +136,14 @@ export function ProductSeoGenerator({
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to publish SEO metadata');
-      }
+      if (!res.ok) throw new Error(data.error || 'Failed to publish SEO metadata');
 
       activeProduct.metaTitle = metaTitle;
       activeProduct.metaDescription = metaDescription;
       setPublishSuccess(true);
       setTimeout(() => setPublishSuccess(false), 4000);
 
-      toast.success(`Published SEO metadata to "${activeProduct.name}"`, {
-        title: 'Storefront SEO Updated',
-      });
+      toast.success(`Published SEO metadata to "${activeProduct.name}"`, 'Storefront SEO Updated');
 
       if (onHistoryUpdate) {
         fetchHistory(activeProduct.id);
@@ -208,7 +186,6 @@ export function ProductSeoGenerator({
   const titleStatus = getTitleStatus(titleLength);
   const descStatus = getDescStatus(descLength);
 
-  // Generate Sample JSON-LD for Preview
   const sampleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -240,7 +217,7 @@ export function ProductSeoGenerator({
             <select
               value={selectedProductId}
               onChange={(e) => handleProductChange(e.target.value)}
-              className="w-full appearance-none bg-bg-primary border border-hairline px-4 py-3 text-sm text-text-ondark focus:border-accent-brass focus:outline-none transition-colors"
+              className="w-full appearance-none bg-bg-primary border border-hairline px-4 py-3 text-sm text-text-ondark focus:border-accent-brass focus:outline-none transition-colors cursor-pointer"
             >
               {products.map((p) => (
                 <option key={p.id} value={p.id} className="bg-bg-primary text-text-ondark">
@@ -255,7 +232,7 @@ export function ProductSeoGenerator({
               type="button"
               onClick={handleGenerateSeo}
               disabled={isGenerating || isPublishing}
-              className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-bg-primary hover:bg-bg-deep border border-accent-brass/60 text-accent-brass text-xs uppercase tracking-[0.2em] font-medium transition-all hover:border-accent-brass disabled:opacity-50"
+              className="w-full lg:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-bg-primary hover:bg-bg-deep border border-accent-brass/60 text-accent-brass text-xs uppercase tracking-[0.2em] font-medium transition-all hover:border-accent-brass disabled:opacity-50 cursor-pointer"
             >
               {isGenerating ? (
                 <>
@@ -273,112 +250,20 @@ export function ProductSeoGenerator({
 
       {/* 2. Google SERP Simulator & Form Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Real-time Google SERP Simulator (5 cols) */}
+        {/* Left: Google SERP Simulator (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="border border-hairline bg-bg-deep p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-hairline pb-3">
-              <div className="flex items-center gap-2">
-                <Search size={15} className="text-accent-brass" />
-                <span className="text-xs font-serif text-text-ondark tracking-wide">
-                  Google SERP Snippet Preview
-                </span>
-              </div>
-              {/* Desktop vs Mobile Toggle */}
-              <div className="flex items-center border border-hairline p-0.5 bg-bg-primary">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('desktop')}
-                  className={`p-1.5 transition-colors ${
-                    viewMode === 'desktop'
-                      ? 'bg-accent-brass/20 text-accent-brass'
-                      : 'text-text-ondark/50 hover:text-text-ondark'
-                  }`}
-                  title="Desktop Preview"
-                >
-                  <Monitor size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('mobile')}
-                  className={`p-1.5 transition-colors ${
-                    viewMode === 'mobile'
-                      ? 'bg-accent-brass/20 text-accent-brass'
-                      : 'text-text-ondark/50 hover:text-text-ondark'
-                  }`}
-                  title="Mobile Preview"
-                >
-                  <Smartphone size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Google Search Result Card Mockup */}
-            <div
-              className={`border border-hairline/60 bg-[#202124] p-4 text-left transition-all ${
-                viewMode === 'mobile' ? 'max-w-[340px] mx-auto rounded-lg' : 'rounded-sm'
-              }`}
-            >
-              {/* Site URL & Breadcrumb */}
-              <div className="flex items-center gap-2 mb-1 text-[11px] text-[#bdc1c6]">
-                <div className="h-4 w-4 rounded-full bg-accent-brass/30 flex items-center justify-center text-[9px] text-accent-brass font-bold">
-                  M
-                </div>
-                <div className="truncate">
-                  <span className="text-[#dadce0] font-normal">{brandConfig.name}</span>
-                  <span className="text-[#9aa0a6] mx-1">›</span>
-                  <span className="text-[#9aa0a6]">product › {slug || activeProduct?.slug}</span>
-                </div>
-              </div>
-
-              {/* Title (Clickable blue in Google) */}
-              <h4 className="text-[#8ab4f8] hover:underline text-sm md:text-base font-normal leading-snug cursor-pointer line-clamp-2">
-                {metaTitle || `${activeProduct?.name} — ${brandConfig.name}`}
-              </h4>
-
-              {/* Description snippet */}
-              <p className="text-[#bdc1c6] text-xs font-light leading-relaxed mt-1 line-clamp-2">
-                {metaDescription ||
-                  activeProduct?.description ||
-                  brandConfig.seo.defaultDescription}
-              </p>
-
-              {/* Rich snippet badges */}
-              <div className="mt-2.5 pt-2 border-t border-[#3c4043] flex items-center gap-3 text-[10px] text-[#9aa0a6]">
-                <span>★★★★★ 4.9 (19)</span>
-                <span>·</span>
-                <span>
-                  {brandConfig.currency.symbol}
-                  {activeProduct?.basePrice?.toLocaleString()}
-                </span>
-                <span>·</span>
-                <span className="text-emerald-400">In stock</span>
-              </div>
-            </div>
-
-            {/* Quick Actions for JSON-LD */}
-            <div className="pt-2 flex items-center justify-between text-xs text-text-ondark/60">
-              <button
-                type="button"
-                onClick={() => setShowJsonLdModal(true)}
-                className="hover:text-accent-brass flex items-center gap-1.5 transition-colors"
-              >
-                <Code size={13} className="text-accent-brass" /> Inspect JSON-LD Schema
-              </button>
-              <Link
-                href={`/product/${activeProduct?.slug}`}
-                target="_blank"
-                className="hover:text-accent-brass flex items-center gap-1 transition-colors"
-              >
-                View Live PDP <ExternalLink size={12} />
-              </Link>
-            </div>
-          </div>
+          <GoogleSerpSimulator
+            product={activeProduct}
+            metaTitle={metaTitle}
+            metaDescription={metaDescription}
+            slug={slug}
+            onOpenJsonLd={() => setShowJsonLdModal(true)}
+          />
         </div>
 
         {/* Right: Meta Tag Editor & Form (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           <div className="border border-hairline bg-bg-deep p-6 space-y-5">
-            {/* Feedback Banners */}
             {errorMessage && (
               <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-300 text-xs flex items-start gap-2">
                 <AlertCircle size={14} className="shrink-0 mt-0.5" />
@@ -464,17 +349,16 @@ export function ProductSeoGenerator({
                 type="button"
                 onClick={handleGenerateSeo}
                 disabled={isGenerating || isPublishing}
-                className="flex items-center gap-2 text-xs text-accent-brass hover:underline disabled:opacity-50"
+                className="flex items-center gap-2 text-xs text-accent-brass hover:underline disabled:opacity-50 cursor-pointer"
               >
-                <RefreshCw size={13} className={isGenerating ? 'animate-spin' : ''} /> Regenerate
-                with Gemini
+                <RefreshCw size={13} className={isGenerating ? 'animate-spin' : ''} /> Regenerate with Gemini
               </button>
 
               <button
                 type="button"
                 onClick={handlePublishSeo}
                 disabled={isPublishing || isGenerating}
-                className={`flex items-center gap-2 px-6 py-2.5 text-xs uppercase tracking-[0.2em] font-medium transition-all ${
+                className={`flex items-center gap-2 px-6 py-2.5 text-xs uppercase tracking-[0.2em] font-medium transition-all cursor-pointer ${
                   publishSuccess
                     ? 'bg-emerald-600 text-white'
                     : 'bg-accent-brass text-bg-primary hover:bg-accent-brass-hover disabled:opacity-40'
@@ -500,41 +384,11 @@ export function ProductSeoGenerator({
       </div>
 
       {/* JSON-LD Schema Modal */}
-      {showJsonLdModal && (
-        <div className="fixed inset-0 z-50 bg-bg-deep/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-bg-deep border border-hairline max-w-2xl w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-hairline pb-3">
-              <h3 className="font-serif text-lg text-text-ondark">
-                Schema.org JSON-LD Product Markup
-              </h3>
-              <button
-                onClick={() => setShowJsonLdModal(false)}
-                className="text-text-ondark/60 hover:text-text-ondark text-xs uppercase tracking-wider"
-              >
-                Close
-              </button>
-            </div>
-
-            <pre className="bg-bg-primary p-4 text-[11px] font-mono text-text-ondark/80 overflow-x-auto max-h-96 border border-hairline">
-              {JSON.stringify(sampleJsonLd, null, 2)}
-            </pre>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(JSON.stringify(sampleJsonLd, null, 2));
-                  setCopiedSuccess(true);
-                  setTimeout(() => setCopiedSuccess(false), 2000);
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-accent-brass text-bg-primary text-xs uppercase tracking-wider font-medium"
-              >
-                {copiedSuccess ? <Check size={13} /> : <Copy size={13} />}
-                {copiedSuccess ? 'Copied' : 'Copy JSON-LD'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <JsonLdModal
+        isOpen={showJsonLdModal}
+        jsonData={sampleJsonLd}
+        onClose={() => setShowJsonLdModal(false)}
+      />
     </div>
   );
 }

@@ -7,19 +7,13 @@ import {
   CheckCircle2,
   Clock,
   Filter,
-  Send,
-  User,
-  Sparkles,
-  ShieldCheck,
   RefreshCw,
-  X,
-  ExternalLink,
   MessageSquare,
-  Package,
 } from 'lucide-react';
 import { SupportQueueData, SupportTicketItem, SupportMessageItem } from '@/lib/db/support';
-import { brandConfig } from '@/config/brand.config';
 import { toast } from '@/lib/store/useToast';
+import { SupportMetricsOverview } from './SupportMetricsOverview';
+import { SupportTicketDrawer } from './SupportTicketDrawer';
 
 interface SupportQueueClientProps {
   initialData: SupportQueueData;
@@ -191,50 +185,14 @@ export function SupportQueueClient({ initialData }: SupportQueueClientProps) {
         <button
           type="button"
           onClick={handleRefresh}
-          className="flex items-center gap-2 px-4 py-2 border border-hairline bg-bg-deep text-text-ondark/70 hover:text-text-ondark text-xs uppercase tracking-wider transition-colors"
+          className="flex items-center gap-2 px-4 py-2 border border-hairline bg-bg-deep text-text-ondark/70 hover:text-text-ondark text-xs uppercase tracking-wider transition-colors cursor-pointer"
         >
           <RefreshCw size={13} /> Refresh Queue
         </button>
       </div>
 
       {/* 2. Metrics Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="border border-hairline bg-bg-deep p-4 sm:p-5 space-y-1 rounded-md shadow-sm">
-          <span className="text-[10px] uppercase tracking-widest text-text-ondark/50 block">
-            Total Tickets
-          </span>
-          <span className="font-serif text-2xl font-light text-text-ondark">
-            {data.metrics.totalTickets}
-          </span>
-        </div>
-
-        <div className="border border-hairline bg-bg-deep p-4 sm:p-5 space-y-1 rounded-md shadow-sm">
-          <span className="text-[10px] uppercase tracking-widest text-amber-400/80 block">
-            Open Inquiries
-          </span>
-          <span className="font-serif text-2xl font-light text-amber-400">
-            {data.metrics.openTickets}
-          </span>
-        </div>
-
-        <div className="border border-hairline bg-bg-deep p-4 sm:p-5 space-y-1 rounded-md shadow-sm">
-          <span className="text-[10px] uppercase tracking-widest text-rose-400/80 block">
-            Escalated to Human
-          </span>
-          <span className="font-serif text-2xl font-light text-rose-400">
-            {data.metrics.escalatedTickets}
-          </span>
-        </div>
-
-        <div className="border border-hairline bg-bg-deep p-4 sm:p-5 space-y-1 rounded-md shadow-sm">
-          <span className="text-[10px] uppercase tracking-widest text-emerald-400/80 block">
-            Avg Resolution Time
-          </span>
-          <span className="font-serif text-2xl font-light text-emerald-400">
-            {data.metrics.avgResolutionTimeMinutes}m
-          </span>
-        </div>
-      </div>
+      <SupportMetricsOverview metrics={data.metrics} />
 
       {/* 3. Filter Tabs & Tickets Table */}
       <div className="border border-hairline bg-bg-deep rounded-md shadow-sm overflow-hidden">
@@ -246,8 +204,9 @@ export function SupportQueueClient({ initialData }: SupportQueueClientProps) {
             {['ALL', 'ESCALATED', 'OPEN', 'RESOLVED', 'CLOSED'].map((tab) => (
               <button
                 key={tab}
+                type="button"
                 onClick={() => setActiveFilter(tab)}
-                className={`px-3 py-1 text-xs border transition-all ${
+                className={`px-3 py-1 text-xs border transition-all cursor-pointer ${
                   activeFilter === tab
                     ? 'border-accent-brass bg-accent-brass/15 text-accent-brass font-medium'
                     : 'border-hairline text-text-ondark/60 hover:text-text-ondark'
@@ -343,7 +302,7 @@ export function SupportQueueClient({ initialData }: SupportQueueClientProps) {
                         <button
                           type="button"
                           onClick={() => setSelectedTicket(ticket)}
-                          className="px-3 py-1.5 bg-bg-primary border border-hairline text-text-ondark hover:border-accent-brass hover:text-accent-brass text-[11px] tracking-wider uppercase transition-colors"
+                          className="px-3 py-1.5 bg-bg-primary border border-hairline text-text-ondark hover:border-accent-brass hover:text-accent-brass text-[11px] tracking-wider uppercase transition-colors cursor-pointer"
                         >
                           View Thread →
                         </button>
@@ -357,160 +316,18 @@ export function SupportQueueClient({ initialData }: SupportQueueClientProps) {
         )}
       </div>
 
-      {/* 4. Slide-over / Modal Interactive Conversation Drawer */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 bg-bg-deep/80 backdrop-blur-xs flex items-center justify-end">
-          <div className="bg-bg-deep border-l border-hairline w-full max-w-2xl h-full flex flex-col shadow-2xl">
-            {/* Drawer Header */}
-            <div className="p-6 border-b border-hairline flex items-center justify-between">
-              <div className="space-y-1 min-w-0 pr-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider text-accent-brass">
-                    Ticket #{selectedTicket.id.slice(-6).toUpperCase()}
-                  </span>
-                  {getStatusBadge(selectedTicket.status)}
-                </div>
-                <h3 className="font-serif text-lg text-text-ondark font-light truncate">
-                  {selectedTicket.subject}
-                </h3>
-                <p className="text-xs text-text-ondark/60 font-light">
-                  {selectedTicket.customerName} ({selectedTicket.customerEmail})
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedTicket(null)}
-                className="p-2 text-text-ondark/60 hover:text-text-ondark border border-hairline shrink-0"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Status Selector Bar */}
-            <div className="px-6 py-3 border-b border-hairline bg-bg-primary/40 flex items-center justify-between text-xs">
-              <span className="text-[10px] uppercase tracking-wider text-text-ondark/60">
-                Update Status:
-              </span>
-              <div className="flex gap-1.5">
-                {(['OPEN', 'ESCALATED', 'RESOLVED', 'CLOSED'] as const).map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => handleUpdateStatus(st)}
-                    className={`px-2.5 py-1 text-[10px] uppercase tracking-wider border transition-colors ${
-                      selectedTicket.status === st
-                        ? 'border-accent-brass bg-accent-brass/20 text-accent-brass font-medium'
-                        : 'border-hairline text-text-ondark/50 hover:text-text-ondark'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Conversation Messages Thread */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {selectedTicket.messages.map((msg) => {
-                const isCustomer = msg.role === 'customer';
-                const isAssistant = msg.role === 'assistant';
-                const isAgent = msg.role === 'agent';
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${
-                      isAgent ? 'items-end' : 'items-start'
-                    }`}
-                  >
-                    {/* Role Header */}
-                    <div className="flex items-center gap-1.5 text-[10px] text-text-ondark/40 mb-1 px-1">
-                      {isCustomer ? (
-                        <>
-                          <User size={11} /> <span>{selectedTicket.customerName}</span>
-                        </>
-                      ) : isAssistant ? (
-                        <>
-                          <Sparkles size={11} className="text-accent-brass" />{' '}
-                          <span className="text-accent-brass">AI Concierge</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldCheck size={11} className="text-emerald-400" />{' '}
-                          <span className="text-emerald-400">Concierge Officer</span>
-                        </>
-                      )}
-                      <span>·</span>
-                      <span>
-                        {new Date(msg.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </div>
-
-                    {/* Message Body */}
-                    <div
-                      className={`max-w-lg p-4 text-xs font-light leading-relaxed whitespace-pre-line border ${
-                        isAgent
-                          ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-100'
-                          : isAssistant
-                          ? 'bg-accent-brass/5 border-accent-brass/30 text-text-ondark/90'
-                          : 'bg-bg-primary border-hairline text-text-ondark/80'
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Reply Composer */}
-            <div className="p-6 border-t border-hairline bg-bg-deep space-y-3">
-              {replyError && (
-                <p className="text-xs text-red-400">{replyError}</p>
-              )}
-
-              <textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your response to the client as Concierge Officer..."
-                rows={3}
-                className="w-full bg-bg-primary border border-hairline p-3 text-xs text-text-ondark focus:border-accent-brass focus:outline-none resize-none font-light"
-              />
-
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleSendReply('RESOLVED')}
-                  disabled={isReplying || !replyText.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 text-xs uppercase tracking-wider font-medium disabled:opacity-40"
-                >
-                  <CheckCircle2 size={13} /> Reply & Mark Resolved
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendReply()}
-                  disabled={isReplying || !replyText.trim()}
-                  className="flex items-center gap-1.5 px-6 py-2 bg-accent-brass text-bg-primary hover:bg-accent-brass-hover text-xs uppercase tracking-wider font-medium disabled:opacity-40"
-                >
-                  {isReplying ? (
-                    <>
-                      <RefreshCw size={13} className="animate-spin" /> Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send size={13} /> Send Reply
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 4. Interactive Conversation Drawer */}
+      <SupportTicketDrawer
+        ticket={selectedTicket}
+        replyText={replyText}
+        isReplying={isReplying}
+        replyError={replyError}
+        getStatusBadge={getStatusBadge}
+        onClose={() => setSelectedTicket(null)}
+        onUpdateStatus={handleUpdateStatus}
+        onReplyTextChange={setReplyText}
+        onSendReply={handleSendReply}
+      />
     </div>
   );
 }
