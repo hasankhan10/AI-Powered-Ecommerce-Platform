@@ -27,15 +27,15 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
     }
 
     const elapsed = Date.now() - globalIntroStartTime;
-    const remainingToSmoke = Math.max(0, 5500 - elapsed);
-    const remainingToFinish = Math.max(0, 7100 - elapsed);
+    const remainingToSmoke = Math.max(0, 5000 - elapsed);
+    const remainingToFinish = Math.max(0, 6600 - elapsed);
 
-    // 1. Transition into slow ethereal smoke dissolution at 5.5s
+    // 1. Transition into smooth smoke dissolution at 5.0s
     const smokeTimer = setTimeout(() => {
       setPhase('smoke');
     }, remainingToSmoke);
 
-    // 2. Complete and unmount splash curtain after smoke finishes (7.1s total)
+    // 2. Complete and unmount splash curtain after smoke finishes (6.6s total)
     const finishTimer = setTimeout(() => {
       setPhase('done');
       globalIntroDone = true;
@@ -54,7 +54,7 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
       setPhase('done');
       globalIntroDone = true;
       if (onComplete) onComplete();
-    }, 600);
+    }, 500);
   };
 
   const brandWords = [brandConfig.name, '—', brandConfig.tagline];
@@ -70,97 +70,115 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
           initial={{ opacity: 1 }}
           animate={phase === 'smoke' ? { opacity: 0 } : { opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           onClick={handleSkip}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070605] text-text-ondark overflow-hidden select-none cursor-pointer"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070605] text-text-ondark overflow-hidden select-none cursor-pointer transform-gpu"
+          style={{ willChange: 'opacity' }}
         >
-          {/* Ambient Warm Golden Aura in Background */}
+          {/* Hardware-Accelerated Ambient Warm Golden Aura */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.6 }}
+            initial={{ opacity: 0, scale: 0.8 }}
             animate={
               phase === 'smoke'
-                ? { opacity: 0, scale: 2.2, filter: 'blur(80px)' }
-                : { opacity: 0.9, scale: 1.15, filter: 'blur(50px)' }
+                ? { opacity: 0, scale: 1.8, y: -60 }
+                : { opacity: 0.75, scale: 1, y: 0 }
             }
-            transition={{ duration: phase === 'smoke' ? 1.6 : 2.2, ease: 'easeOut' }}
-            className="absolute h-[550px] w-[550px] sm:h-[800px] sm:w-[800px] rounded-full bg-radial from-accent-brass/25 via-accent-brass/5 to-transparent pointer-events-none"
+            transition={{ duration: phase === 'smoke' ? 1.4 : 1.8, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute h-[380px] w-[380px] sm:h-[650px] sm:w-[650px] rounded-full pointer-events-none transform-gpu"
+            style={{
+              background: 'radial-gradient(circle, rgba(198,168,125,0.22) 0%, rgba(198,168,125,0.06) 45%, transparent 70%)',
+              willChange: 'transform, opacity',
+            }}
           />
 
-          {/* Ethereal Smoke Clouds / Dissolving Mist */}
+          {/* Ethereal Golden Mist Dissolution Clouds (GPU-accelerated radial layers) */}
           {phase === 'smoke' && (
             <>
               <motion.div
-                initial={{ opacity: 0.8, scale: 0.9, y: 0, filter: 'blur(20px)' }}
-                animate={{ opacity: 0, scale: 2.6, y: -120, filter: 'blur(70px)' }}
-                transition={{ duration: 1.6, ease: [0.25, 1, 0.5, 1] }}
-                className="absolute w-[700px] h-[350px] rounded-full bg-gradient-to-t from-accent-brass/35 via-white/10 to-transparent pointer-events-none"
+                initial={{ opacity: 0.6, scale: 0.9, y: 0 }}
+                animate={{ opacity: 0, scale: 2.2, y: -100 }}
+                transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute w-[320px] sm:w-[600px] h-[220px] sm:h-[320px] rounded-full pointer-events-none transform-gpu"
+                style={{
+                  background: 'radial-gradient(ellipse at center, rgba(198,168,125,0.25) 0%, rgba(255,255,255,0.08) 40%, transparent 70%)',
+                  willChange: 'transform, opacity',
+                }}
               />
               <motion.div
-                initial={{ opacity: 0.7, scale: 0.8, x: -50, y: 0, filter: 'blur(18px)' }}
-                animate={{ opacity: 0, scale: 2.8, x: -120, y: -150, filter: 'blur(60px)' }}
-                transition={{ duration: 1.7, ease: [0.25, 1, 0.5, 1] }}
-                className="absolute w-[500px] h-[300px] rounded-full bg-gradient-to-br from-accent-brass/25 via-white/10 to-transparent pointer-events-none"
+                initial={{ opacity: 0.5, scale: 0.85, x: -30, y: 0 }}
+                animate={{ opacity: 0, scale: 2.3, x: -80, y: -120 }}
+                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute w-[260px] sm:w-[480px] h-[180px] sm:h-[260px] rounded-full pointer-events-none transform-gpu"
+                style={{
+                  background: 'radial-gradient(ellipse at center, rgba(219,185,140,0.18) 0%, transparent 65%)',
+                  willChange: 'transform, opacity',
+                }}
               />
               <motion.div
-                initial={{ opacity: 0.7, scale: 0.8, x: 50, y: 0, filter: 'blur(18px)' }}
-                animate={{ opacity: 0, scale: 2.8, x: 120, y: -150, filter: 'blur(60px)' }}
-                transition={{ duration: 1.7, ease: [0.25, 1, 0.5, 1] }}
-                className="absolute w-[500px] h-[300px] rounded-full bg-gradient-to-bl from-accent-brass/25 via-white/10 to-transparent pointer-events-none"
+                initial={{ opacity: 0.5, scale: 0.85, x: 30, y: 0 }}
+                animate={{ opacity: 0, scale: 2.3, x: 80, y: -120 }}
+                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute w-[260px] sm:w-[480px] h-[180px] sm:h-[260px] rounded-full pointer-events-none transform-gpu"
+                style={{
+                  background: 'radial-gradient(ellipse at center, rgba(219,185,140,0.18) 0%, transparent 65%)',
+                  willChange: 'transform, opacity',
+                }}
               />
             </>
           )}
 
           {/* Center Brand Text Container */}
-          <div className="relative z-10 max-w-4xl px-6 text-center space-y-8">
+          <div className="relative z-10 max-w-4xl px-4 sm:px-6 text-center space-y-5 sm:space-y-7">
             {/* Top Monogram Crest */}
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.8 }}
+              initial={{ opacity: 0, y: 15, scale: 0.85 }}
               animate={
                 phase === 'smoke'
-                  ? { opacity: 0, y: -45, scale: 1.25, filter: 'blur(30px)' }
-                  : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+                  ? { opacity: 0, y: -35, scale: 1.2 }
+                  : { opacity: 1, y: 0, scale: 1 }
               }
               transition={{
-                duration: phase === 'smoke' ? 1.2 : 1.4,
-                delay: phase === 'smoke' ? 0 : 0.3,
+                duration: phase === 'smoke' ? 1.0 : 1.2,
+                delay: phase === 'smoke' ? 0 : 0.2,
                 ease: [0.16, 1, 0.3, 1],
               }}
-              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-accent-brass/50 bg-accent-brass/10 text-accent-brass shadow-2xl shadow-accent-brass/20"
+              className="mx-auto flex h-12 w-12 sm:h-15 sm:w-15 items-center justify-center rounded-full border border-accent-brass/50 bg-accent-brass/10 text-accent-brass shadow-lg shadow-accent-brass/20 transform-gpu"
+              style={{ willChange: 'transform, opacity' }}
             >
-              <Sparkles size={24} className="text-accent-brass animate-pulse" />
+              <Sparkles size={20} className="text-accent-brass" />
             </motion.div>
 
-            {/* Word-by-Word Brand Title (Paced & Meditative) */}
-            <div className="flex flex-wrap items-center justify-center gap-x-3.5 sm:gap-x-5 gap-y-2">
+            {/* Word-by-Word Brand Title (Mobile-responsive & Smooth 60fps) */}
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-4 gap-y-1 sm:gap-y-2">
               {brandWords.map((word, index) => (
                 <motion.span
                   key={`brand-${index}`}
-                  initial={{ opacity: 0, y: 35, filter: 'blur(16px)' }}
+                  initial={{ opacity: 0, y: 25, scale: 0.96 }}
                   animate={
                     phase === 'smoke'
                       ? {
                           opacity: 0,
-                          y: -60 - index * 12,
-                          scale: 1.2,
-                          filter: 'blur(36px)',
+                          y: -40 - index * 8,
+                          scale: 1.12,
                           transition: {
-                            duration: 1.4,
-                            delay: index * 0.06,
-                            ease: 'easeInOut',
+                            duration: 1.1,
+                            delay: index * 0.04,
+                            ease: [0.16, 1, 0.3, 1],
                           },
                         }
                       : {
                           opacity: 1,
                           y: 0,
-                          filter: 'blur(0px)',
+                          scale: 1,
                           transition: {
-                            duration: 1.4,
-                            delay: 0.6 + index * 0.45,
+                            duration: 1.1,
+                            delay: 0.4 + index * 0.35,
                             ease: [0.16, 1, 0.3, 1],
                           },
                         }
                   }
-                  className="font-serif text-3xl sm:text-5xl md:text-7xl font-light tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-[#FFF8EE] via-[#EADBCA] to-[#C6A87D] drop-shadow-md"
+                  className="font-serif text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-light tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-[#FFF8EE] via-[#EADBCA] to-[#C6A87D] drop-shadow-sm inline-block transform-gpu"
+                  style={{ willChange: 'transform, opacity' }}
                 >
                   {word}
                 </motion.span>
@@ -168,36 +186,36 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
             </div>
 
             {/* Sub-Tagline Word-by-Word Reveal & Smoke Dissolve */}
-            <div className="flex flex-wrap items-center justify-center gap-x-2.5 sm:gap-x-3 gap-y-1.5 pt-1">
+            <div className="flex flex-wrap items-center justify-center gap-x-1.5 sm:gap-x-2.5 gap-y-1 pt-0.5 sm:pt-1">
               {subWords.map((word, index) => (
                 <motion.span
                   key={`sub-${index}`}
-                  initial={{ opacity: 0, y: 25, filter: 'blur(10px)' }}
+                  initial={{ opacity: 0, y: 18 }}
                   animate={
                     phase === 'smoke'
                       ? {
                           opacity: 0,
-                          y: -40 - index * 10,
-                          scale: 1.15,
-                          filter: 'blur(28px)',
+                          y: -28 - index * 6,
+                          scale: 1.08,
                           transition: {
-                            duration: 1.3,
-                            delay: index * 0.05,
-                            ease: 'easeInOut',
+                            duration: 1.0,
+                            delay: index * 0.03,
+                            ease: [0.16, 1, 0.3, 1],
                           },
                         }
                       : {
                           opacity: 0.9,
                           y: 0,
-                          filter: 'blur(0px)',
+                          scale: 1,
                           transition: {
-                            duration: 1.2,
-                            delay: 2.2 + index * 0.28,
+                            duration: 0.95,
+                            delay: 1.8 + index * 0.22,
                             ease: [0.16, 1, 0.3, 1],
                           },
                         }
                   }
-                  className="text-xs sm:text-sm md:text-base uppercase tracking-[0.35em] text-accent-brass/90 font-light"
+                  className="text-[11px] sm:text-xs md:text-sm uppercase tracking-[0.25em] sm:tracking-[0.35em] text-accent-brass/90 font-light inline-block transform-gpu"
+                  style={{ willChange: 'transform, opacity' }}
                 >
                   {word}
                 </motion.span>
@@ -205,14 +223,14 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
             </div>
           </div>
 
-          {/* Subtle click-to-skip prompt */}
+          {/* Subtle click/tap prompt */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={phase === 'smoke' ? { opacity: 0 } : { opacity: 0.35 }}
-            transition={{ delay: 2.5, duration: 1.0 }}
-            className="absolute bottom-10 text-[10px] uppercase tracking-[0.3em] text-text-ondark/50 font-light"
+            transition={{ delay: 2.2, duration: 0.8 }}
+            className="absolute bottom-6 sm:bottom-10 text-[9px] sm:text-[10px] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-text-ondark/50 font-light"
           >
-            Click anywhere to enter
+            Tap anywhere to enter
           </motion.div>
         </motion.div>
       )}
