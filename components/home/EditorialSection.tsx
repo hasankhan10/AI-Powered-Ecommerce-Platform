@@ -18,7 +18,7 @@ export function EditorialSection() {
               <span>{content.home.editorial.eyebrow}</span>
             </div>
 
-            <h2 className="font-serif text-4xl md:text-6xl font-light text-text-ondark leading-[1.1] tracking-tight">
+            <h2 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-text-ondark leading-[1.08] tracking-tight">
               {content.home.editorial.headline}
             </h2>
 

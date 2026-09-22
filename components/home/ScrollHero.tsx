@@ -212,29 +212,29 @@ export function ScrollHero() {
               {/* Phase 2 Overlay */}
               <div
                 ref={phase2Ref}
-                className="absolute max-w-2xl space-y-8 pointer-events-auto"
+                className="absolute max-w-4xl px-4 space-y-8 pointer-events-auto"
               >
-                <span className="text-xs uppercase tracking-[0.3em] text-accent-brass font-medium">
+                <span className="text-xs sm:text-sm uppercase tracking-[0.35em] text-accent-brass font-medium inline-block">
                   The Atelier Collection
                 </span>
-                <h2 className="font-serif text-3xl md:text-5xl font-light text-text-ondark leading-tight">
+                <h2 className="font-serif text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-light text-text-ondark leading-[1.05] tracking-tight drop-shadow-lg">
                   {content.home.editorial.headline}
                 </h2>
-                <p className="text-sm md:text-base text-text-ondark/80 font-light leading-relaxed tracking-wide">
+                <p className="text-sm sm:text-base md:text-lg text-text-ondark/80 font-light leading-relaxed tracking-wide max-w-2xl mx-auto">
                   {content.home.hero.subheadline}
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5 pt-4">
                   <Link
                     href="/shop"
-                    className="w-full max-w-[270px] sm:w-auto bg-accent-brass px-7 py-3.5 sm:px-9 sm:py-4 text-xs uppercase tracking-[0.25em] font-medium text-bg-primary hover:bg-accent-brass-hover transition-colors flex items-center justify-center gap-3 rounded-md shadow-md"
+                    className="w-full max-w-[270px] sm:w-auto bg-accent-brass px-8 py-4 sm:px-10 sm:py-4.5 text-xs uppercase tracking-[0.25em] font-medium text-bg-primary hover:bg-accent-brass-hover transition-all duration-300 flex items-center justify-center gap-3 rounded-md shadow-xl hover:shadow-accent-brass/20"
                   >
                     {content.home.hero.cta}
                     <ArrowRight size={14} />
                   </Link>
                   <Link
                     href="/story"
-                    className="w-full max-w-[270px] sm:w-auto border border-hairline bg-bg-primary/80 backdrop-blur-md px-7 py-3.5 sm:px-9 sm:py-4 text-xs uppercase tracking-[0.25em] font-medium text-text-ondark hover:border-accent-brass transition-colors flex items-center justify-center rounded-md"
+                    className="w-full max-w-[270px] sm:w-auto border border-hairline bg-bg-primary/80 backdrop-blur-md px-8 py-4 sm:px-10 sm:py-4.5 text-xs uppercase tracking-[0.25em] font-medium text-text-ondark hover:border-accent-brass transition-all duration-300 flex items-center justify-center rounded-md"
                   >
                     {content.home.editorial.cta}
                   </Link>
