@@ -12,6 +12,12 @@ gsap.registerPlugin(ScrollTrigger);
 
 const TOTAL_FRAMES = 286;
 
+// Dynamic scroll distance calibration:
+// Gives each frame ~1.75vh of scroll track so the animation feels buttery smooth and fluent,
+// scaling automatically whether there are 100, 286, or 500 frames.
+const VH_PER_FRAME = 1.75;
+const SCROLL_CONTAINER_HEIGHT_VH = Math.max(300, Math.round(TOTAL_FRAMES * VH_PER_FRAME));
+
 const getFrameSrc = (index: number) => {
   const frameNum = String(index + 1).padStart(3, '0');
   return `/hero-frames/ezgif-7f03cba42f55389b-jpg/ezgif-frame-${frameNum}.jpg`;
@@ -96,7 +102,7 @@ export function ScrollHero() {
         trigger: containerRef.current,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 0.3,
+        scrub: 0.6,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
           const targetIndex = Math.min(
@@ -140,8 +146,12 @@ export function ScrollHero() {
   }, []);
 
   return (
-    <section ref={containerRef} className="relative w-full h-[250vh] bg-bg-deep">
-      {/* Sticky Hero Viewport (stays fixed during the 250vh scroll, then naturally scrolls up) */}
+    <section
+      ref={containerRef}
+      className="relative w-full bg-bg-deep"
+      style={{ height: `${SCROLL_CONTAINER_HEIGHT_VH}vh` }}
+    >
+      {/* Sticky Hero Viewport (stays fixed during the dynamic scroll, then naturally scrolls up) */}
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-bg-deep">
         {/* HTML5 Canvas Frame-by-Frame Scrub Surface */}
         <div className="absolute inset-0 z-0">

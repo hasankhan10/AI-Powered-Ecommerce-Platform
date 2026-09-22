@@ -40,7 +40,7 @@ export function AssistantFloatingTrigger() {
 
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end pointer-events-auto">
-      {/* 4-Second Proactive Speech Bubble Popup */}
+      {/* 5-Second Proactive Speech Bubble Popup */}
       {showPopup && !isDismissed && (
         <div
           onClick={handleOpen}
