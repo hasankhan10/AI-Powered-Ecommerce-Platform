@@ -13,17 +13,18 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
   const [phase, setPhase] = useState<'enter' | 'smoke' | 'done'>('enter');
 
   useEffect(() => {
-    // 1. Slow, majestic word-by-word reveal (0s - 4.4s)
-    // 2. Transition into slow ethereal smoke dissolution at 4.4s
+    // 1. Slow, majestic word-by-word reveal (0s - ~4.0s)
+    // 2. Intentional 1.5s resting pause holding the complete brand statement (4.0s - 5.5s)
+    // 3. Transition into slow ethereal smoke dissolution at 5.5s
     const smokeTimer = setTimeout(() => {
       setPhase('smoke');
-    }, 4400);
+    }, 5500);
 
-    // 3. Complete and unmount splash curtain after smoke finishes (6.0s total)
+    // 4. Complete and unmount splash curtain after smoke finishes (7.1s total)
     const finishTimer = setTimeout(() => {
       setPhase('done');
       if (onComplete) onComplete();
-    }, 6000);
+    }, 7100);
 
     return () => {
       clearTimeout(smokeTimer);
