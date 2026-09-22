@@ -9,22 +9,38 @@ interface BrandIntroSplashProps {
   onComplete?: () => void;
 }
 
+// Global start timestamp to ensure seamless continuity across Next.js loading/hydration boundaries
+let globalIntroStartTime: number | null = null;
+let globalIntroDone = false;
+
 export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
   const [phase, setPhase] = useState<'enter' | 'smoke' | 'done'>('enter');
 
   useEffect(() => {
-    // 1. Slow, majestic word-by-word reveal (0s - ~4.0s)
-    // 2. Intentional 1.5s resting pause holding the complete brand statement (4.0s - 5.5s)
-    // 3. Transition into slow ethereal smoke dissolution at 5.5s
+    if (globalIntroDone) {
+      setPhase('done');
+      return;
+    }
+
+    if (!globalIntroStartTime) {
+      globalIntroStartTime = Date.now();
+    }
+
+    const elapsed = Date.now() - globalIntroStartTime;
+    const remainingToSmoke = Math.max(0, 5500 - elapsed);
+    const remainingToFinish = Math.max(0, 7100 - elapsed);
+
+    // 1. Transition into slow ethereal smoke dissolution at 5.5s
     const smokeTimer = setTimeout(() => {
       setPhase('smoke');
-    }, 5500);
+    }, remainingToSmoke);
 
-    // 4. Complete and unmount splash curtain after smoke finishes (7.1s total)
+    // 2. Complete and unmount splash curtain after smoke finishes (7.1s total)
     const finishTimer = setTimeout(() => {
       setPhase('done');
+      globalIntroDone = true;
       if (onComplete) onComplete();
-    }, 7100);
+    }, remainingToFinish);
 
     return () => {
       clearTimeout(smokeTimer);
@@ -36,6 +52,7 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
     setPhase('smoke');
     setTimeout(() => {
       setPhase('done');
+      globalIntroDone = true;
       if (onComplete) onComplete();
     }, 600);
   };
@@ -43,8 +60,10 @@ export function BrandIntroSplash({ onComplete }: BrandIntroSplashProps) {
   const brandWords = [brandConfig.name, '—', brandConfig.tagline];
   const subWords = ['Craft', 'that', 'refuses', 'to', 'compromise.'];
 
+  if (globalIntroDone) return null;
+
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {phase !== 'done' && (
         <motion.div
           key="brand-intro-splash"
