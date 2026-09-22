@@ -10,6 +10,7 @@ import { EditorialSection } from '@/components/home/EditorialSection';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { TrustBar } from '@/components/home/TrustBar';
 import { Testimonials } from '@/components/home/Testimonials';
+import { BrandIntroSplash } from '@/components/ui/BrandIntroSplash';
 import { FormattedProduct, FormattedCategory } from '@/lib/db/homepage';
 
 interface HomeClientProps {
@@ -20,6 +21,9 @@ interface HomeClientProps {
 export function HomeClient({ products, categories }: HomeClientProps) {
   return (
     <div className="flex min-h-screen flex-col bg-bg-primary text-text-ondark">
+      {/* Brand Intro Word-by-Word Reveal & Smoke Dissolve Splash */}
+      <BrandIntroSplash />
+
       {/* Navigation Header */}
       <Navbar />
 
