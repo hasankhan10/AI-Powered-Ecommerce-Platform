@@ -14,10 +14,10 @@ export function AssistantFloatingTrigger() {
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Show popup message 4 seconds after landing on the page
+    // Show popup message 5 seconds after landing on the page
     const timer = setTimeout(() => {
       setShowPopup(true);
-    }, 4000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);

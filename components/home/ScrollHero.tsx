@@ -10,11 +10,11 @@ import { content } from '@/config/content';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const TOTAL_FRAMES = 180;
+const TOTAL_FRAMES = 286;
 
 const getFrameSrc = (index: number) => {
   const frameNum = String(index + 1).padStart(3, '0');
-  return `/hero-frames/ezgif-85d14f55184f029c-jpg/ezgif-frame-${frameNum}.jpg`;
+  return `/hero-frames/ezgif-7f03cba42f55389b-jpg/ezgif-frame-${frameNum}.jpg`;
 };
 
 export function ScrollHero() {
