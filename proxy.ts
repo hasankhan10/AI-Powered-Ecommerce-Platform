@@ -2,11 +2,24 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Auth session refresh proxy.
- * Keeps the Supabase session alive by refreshing the token on every request.
- * Also protects /account and /admin routes.
+ * Auth session proxy.
+ * Only checks authentication when users attempt to access protected routes (/account, /admin, /api/admin).
+ * Public storefront routes (landing page, shop, products, collections, story, cart) load instantly
+ * without blocking on any initial auth checks.
  */
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  const isAccountRoute = pathname.startsWith("/account");
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAdminApiRoute = pathname.startsWith("/api/admin");
+  const isProtectedRoute = isAccountRoute || isAdminRoute || isAdminApiRoute;
+
+  // On public storefront pages, return immediately with zero auth overhead
+  if (!isProtectedRoute) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -30,37 +43,37 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session — do not remove this
+  // Authenticate user only for protected routes
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // Protect customer account routes
-  if (request.nextUrl.pathname.startsWith("/account") && !user) {
+  if (isAccountRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirectTo", request.nextUrl.pathname);
+    url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
   // Protect admin API routes
-  if (request.nextUrl.pathname.startsWith("/api/admin") && !user) {
+  if (isAdminApiRoute && !user) {
     // Allow verify-role for role checks during login/routing
-    if (request.nextUrl.pathname === "/api/admin/verify-role") {
+    if (pathname === "/api/admin/verify-role") {
       return supabaseResponse;
     }
     // Allow dev-setup only in development if invoked locally
-    if (request.nextUrl.pathname === "/api/admin/dev-setup" && process.env.NODE_ENV !== "production") {
+    if (pathname === "/api/admin/dev-setup" && process.env.NODE_ENV !== "production") {
       return supabaseResponse;
     }
     return NextResponse.json({ error: "Unauthorized - Admin session required" }, { status: 401 });
   }
 
-  // Protect admin UI routes — role check happens server-side inside the layout
-  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
+  // Protect admin UI routes
+  if (isAdminRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirectTo", request.nextUrl.pathname);
+    url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
