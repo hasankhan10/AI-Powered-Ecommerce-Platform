@@ -157,11 +157,8 @@ export function ScrollHero() {
         <div className="absolute inset-0 z-0">
           <canvas
             ref={canvasRef}
-            className="h-full w-full object-cover brightness-[0.7] contrast-[1.05]"
+            className="h-full w-full object-cover brightness-100 contrast-100"
           />
-
-          {/* Ambient Dark Gradient Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-bg-primary/30 pointer-events-none" />
         </div>
 
         {/* Editorial Text Overlays */}
@@ -204,7 +201,7 @@ export function ScrollHero() {
                 <span className="text-xs uppercase tracking-[0.35em] text-accent-brass font-medium">
                   {brandConfig.name} — {brandConfig.tagline}
                 </span>
-                <h1 className="font-serif text-5xl md:text-7xl lg:text-9xl font-light text-text-ondark leading-[1.02] tracking-tight">
+                <h1 className="font-serif text-5xl md:text-7xl lg:text-9xl font-light text-text-ondark leading-[1.02] tracking-tight drop-shadow-lg">
                   {content.home.hero.headline}
                 </h1>
               </div>
