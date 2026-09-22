@@ -20,7 +20,7 @@ const SCROLL_CONTAINER_HEIGHT_VH = Math.max(300, Math.round(TOTAL_FRAMES * VH_PE
 
 const getFrameSrc = (index: number) => {
   const frameNum = String(index + 1).padStart(3, '0');
-  return `/hero-frames/ezgif-7f03cba42f55389b-jpg/ezgif-frame-${frameNum}.jpg`;
+  return `/hero-frames/ezgif-4b07d3ccd60e25d1-jpg/ezgif-frame-${frameNum}.jpg`;
 };
 
 export function ScrollHero() {
