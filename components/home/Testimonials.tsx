@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { Star, CheckCircle2, Quote } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { content } from '@/config/content';
+import { FadeInView, StaggerContainer, staggerItemVariants } from '@/components/ui/FadeInView';
 
 export interface TestimonialItem {
   id: string;
@@ -27,30 +29,36 @@ export function Testimonials({ items }: TestimonialsProps) {
   const reviewList = items && items.length > 0 ? items : defaultItems;
 
   return (
-    <section className="w-full bg-bg-primary py-24 border-b border-hairline">
+    <section className="w-full bg-bg-primary py-24 border-b border-hairline overflow-hidden">
       <div className="mx-auto max-w-7xl px-6 lg:px-12">
-        {/* Section Header */}
-        <div className="max-w-2xl mx-auto text-center mb-16 space-y-3">
-          <span className="text-[11px] uppercase tracking-[0.3em] text-accent-brass font-medium">
-            {eyebrow}
-          </span>
-          <h2 className="font-serif text-3xl md:text-5xl font-light text-text-ondark tracking-tight">
-            {headline}
-          </h2>
-          <p className="text-xs md:text-sm text-text-ondark/70 font-light max-w-lg mx-auto leading-relaxed">
-            {subheadline}
-          </p>
-        </div>
+        {/* Section Header with FadeInView */}
+        <FadeInView direction="up" distance={24} duration={0.8}>
+          <div className="max-w-2xl mx-auto text-center mb-16 space-y-3">
+            <span className="text-[11px] uppercase tracking-[0.3em] text-accent-brass font-medium">
+              {eyebrow}
+            </span>
+            <h2 className="font-serif text-3xl md:text-5xl font-light text-text-ondark tracking-tight">
+              {headline}
+            </h2>
+            <p className="text-xs md:text-sm text-text-ondark/70 font-light max-w-lg mx-auto leading-relaxed">
+              {subheadline}
+            </p>
+          </div>
+        </FadeInView>
 
-        {/* Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Testimonials Grid with Staggered View Animation */}
+        <StaggerContainer
+          staggerDelay={0.12}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
           {reviewList.map((review) => (
-            <div
+            <motion.div
               key={review.id}
+              variants={staggerItemVariants}
               className="relative flex flex-col justify-between rounded-md border border-hairline bg-bg-deep p-8 transition-all duration-300 hover:border-accent-brass/50 hover:bg-bg-deep/80 group shadow-sm hover:shadow-xl"
             >
               {/* Subtle luxury quotation mark watermark */}
-              <div className="absolute top-6 right-6 text-accent-brass/10 group-hover:text-accent-brass/20 transition-colors">
+              <div className="absolute top-6 right-6 text-accent-brass/10 group-hover:text-accent-brass/20 transition-colors pointer-events-none">
                 <Quote size={36} />
               </div>
 
@@ -101,9 +109,9 @@ export function Testimonials({ items }: TestimonialsProps) {
                   </span>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   );

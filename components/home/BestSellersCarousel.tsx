@@ -8,6 +8,8 @@ import { FormattedProduct } from '@/lib/db/homepage';
 import { content } from '@/config/content';
 import { brandConfig } from '@/config/brand.config';
 
+import { FadeInView } from '@/components/ui/FadeInView';
+
 interface BestSellersCarouselProps {
   products: FormattedProduct[];
 }
@@ -172,22 +174,24 @@ export function BestSellersCarousel({ products }: BestSellersCarouselProps) {
       <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[650px] bg-radial from-accent-wine/60 via-accent-wine/15 to-transparent blur-3xl opacity-75" />
 
       <div className="mx-auto max-w-7xl px-6 lg:px-12 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-14 md:mb-20">
-          <div className="space-y-2">
-            <span className="text-[11px] uppercase tracking-[0.3em] text-accent-brass font-medium">
-              {content.home.bestSellers?.eyebrow || 'Signature Formulations'}
-            </span>
-            <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl font-light text-text-ondark tracking-tight">
-              {content.home.bestSellers?.headline || 'Best Sellers'}
-            </h2>
-          </div>
+        {/* Header with FadeInView */}
+        <FadeInView direction="up" distance={24} duration={0.8}>
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between mb-14 md:mb-20">
+            <div className="space-y-2">
+              <span className="text-[11px] uppercase tracking-[0.3em] text-accent-brass font-medium">
+                {content.home.bestSellers?.eyebrow || 'Signature Formulations'}
+              </span>
+              <h2 className="font-serif text-3xl md:text-5xl lg:text-6xl font-light text-text-ondark tracking-tight">
+                {content.home.bestSellers?.headline || 'Best Sellers'}
+              </h2>
+            </div>
 
-          <p className="text-xs md:text-sm text-text-ondark/60 font-light max-w-md mt-3 md:mt-0 leading-relaxed">
-            {content.home.bestSellers?.subheadline ||
-              'The most coveted artisanal creations, defined by rare notes and deliberate craftsmanship.'}
-          </p>
-        </div>
+            <p className="text-xs md:text-sm text-text-ondark/60 font-light max-w-md mt-3 md:mt-0 leading-relaxed">
+              {content.home.bestSellers?.subheadline ||
+                'The most coveted artisanal creations, defined by rare notes and deliberate craftsmanship.'}
+            </p>
+          </div>
+        </FadeInView>
 
         {/* 3D Interactive Large Carousel Stage */}
         <div
