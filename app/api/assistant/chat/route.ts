@@ -98,11 +98,14 @@ export async function POST(req: NextRequest) {
 Brand: ${brandConfig.name} (${brandConfig.tagline}).
 Catalogue Context: You have access to real-time search via the search_products tool.
 Always use search_products whenever a customer asks for recommendations, outfits, styling advice, price checks, or specific pieces.
-Recommend specific pieces by name and explain why their silhouettes, fabrics (e.g. linen, silk, organic cotton), or textures match the customer's occasion or aesthetic.
-Keep responses concise, elegant, and editorial.
+When replying to a customer's query or search:
+1. Greet them warmly and acknowledge what they specifically searched for or asked about.
+2. Tell them clearly: "According to your requirement, these pieces should be very good for you because..."
+3. Detail the exact reasons why the selected silhouettes, fabrics (e.g. breathable linen, mulberry silk, organic cotton), and drape match their personal style or occasion.
+4. Keep responses personal, warm, thoughtful, and consultative.
 ${
   productContext
-    ? `The customer is currently viewing the piece: "${productContext.name}" (Slug: ${productContext.slug}). Offer styling pairings and complementary pieces for it.`
+    ? `The customer is currently viewing the piece: "${productContext.name}" (Slug: ${productContext.slug}). Offer styling pairings and complementary pieces tailored specifically to this item.`
     : ''
 }`;
 
@@ -213,21 +216,22 @@ ${
       inStockOnly: true,
     });
 
-    // Generate warm, bespoke editorial narrative
+    // Generate warm, personalized editorial narrative
     let fallbackText = '';
+    const cleanSearchQuery = userPrompt.trim();
     if (matchedProducts.length > 0) {
       if (maxPrice) {
-        fallbackText = `For your consideration under ₹${maxPrice.toLocaleString('en-IN')}, I have curated pieces from our collection crafted with thoughtful silhouettes and breathable natural fibers. Each design prioritizes longevity, refined texture, and effortless grace.`;
+        fallbackText = `According to your requirement under ₹${maxPrice.toLocaleString('en-IN')}, I have personally selected these pieces that should be an exceptional fit for you. Each piece below combines breathable natural fibers, relaxed tailoring, and effortless elegance:`;
       } else if (productContext) {
-        fallbackText = `To complement the ${productContext.name}, I recommend styling it alongside relaxed tailoring and tactile accessories that balance structure and fluid movement.`;
+        fallbackText = `According to your style requirement for pairing with the ${productContext.name}, these complementary pieces will work beautifully for you to create a cohesive, elevated look:`;
       } else {
-        fallbackText = `Here is a curated selection from our current collection, embodying tactile craftsmanship and timeless restraint. Each piece is cut from premium materials and currently ready for immediate dispatch.`;
+        fallbackText = `Based on what you're looking for, according to your requirement these pieces should be very good for you. Each selection highlights our signature craftsmanship, premium drape, and versatile comfort:`;
       }
     } else {
       // If no exact match with constraints, return top featured in-stock pieces
       const generalProducts = await searchStoreProducts({ inStockOnly: true });
       matchedProducts.push(...generalProducts.slice(0, 3));
-      fallbackText = `While we refine tailored recommendations for that specific inquiry, here are signature in-stock pieces from our house collection celebrated for their versatile styling.`;
+      fallbackText = `According to your search for "${cleanSearchQuery}", here are signature pieces from our atelier that would be an excellent match for your personal wardrobe:`;
     }
 
     // Stream the fallback response smoothly to the client

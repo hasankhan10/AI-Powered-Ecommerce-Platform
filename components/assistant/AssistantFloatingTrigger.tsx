@@ -14,10 +14,10 @@ export function AssistantFloatingTrigger() {
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Show popup message 5 seconds after landing on the page
+    // Show popup message 10 seconds after landing on the page
     const timer = setTimeout(() => {
       setShowPopup(true);
-    }, 5000);
+    }, 10000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -40,7 +40,7 @@ export function AssistantFloatingTrigger() {
 
   return (
     <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end pointer-events-auto">
-      {/* 5-Second Proactive Speech Bubble Popup */}
+      {/* 10-Second Proactive Speech Bubble Popup */}
       {showPopup && !isDismissed && (
         <div
           onClick={handleOpen}
