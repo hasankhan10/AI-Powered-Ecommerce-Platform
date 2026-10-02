@@ -40,7 +40,18 @@ export function AssistantChatDrawer() {
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
+      const originalOverflow = document.body.style.overflow;
+      const originalOverscroll = document.body.style.overscrollBehavior;
+      document.body.style.overflow = 'hidden';
+      document.body.style.overscrollBehavior = 'none';
+
+      const timer = setTimeout(() => inputRef.current?.focus(), 150);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.overscrollBehavior = originalOverscroll;
+        clearTimeout(timer);
+      };
     }
   }, [isOpen]);
 
@@ -220,7 +231,7 @@ export function AssistantChatDrawer() {
   if (pathname?.startsWith('/admin') || !isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end" data-lenis-prevent="true">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
@@ -228,7 +239,10 @@ export function AssistantChatDrawer() {
       />
 
       {/* Slide-out Drawer */}
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-bg-deep border-l border-hairline shadow-2xl animate-in slide-in-from-right duration-300">
+      <div
+        className="relative z-10 flex h-full w-full max-w-md flex-col bg-bg-deep border-l border-hairline shadow-2xl animate-in slide-in-from-right duration-300 overscroll-contain"
+        data-lenis-prevent="true"
+      >
         {/* Drawer Header */}
         <AssistantDrawerHeader
           activeTab={activeTab}
@@ -257,7 +271,10 @@ export function AssistantChatDrawer() {
         )}
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div
+          className="flex-1 overflow-y-auto p-5 space-y-4 overscroll-contain touch-pan-y"
+          data-lenis-prevent="true"
+        >
           {messages.length === 0 ? (
             <AssistantStarterPrompts
               activeTab={activeTab}

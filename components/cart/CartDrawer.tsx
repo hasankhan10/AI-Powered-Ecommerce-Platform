@@ -32,6 +32,20 @@ export function CartDrawer() {
       .catch(() => {});
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.overscrollBehavior = originalOverscroll;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const progressToFreeShipping = Math.min(
@@ -47,7 +61,7 @@ export function CartDrawer() {
   }).format(cart.subtotal);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end" data-lenis-prevent="true">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-bg-deep/80 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
@@ -55,7 +69,10 @@ export function CartDrawer() {
       />
 
       {/* Drawer Panel */}
-      <div className="relative flex h-full w-full max-w-md flex-col border-l border-hairline bg-bg-primary text-text-ondark shadow-2xl z-10 animate-in slide-in-from-right duration-300">
+      <div
+        className="relative flex h-full w-full max-w-md flex-col border-l border-hairline bg-bg-primary text-text-ondark shadow-2xl z-10 animate-in slide-in-from-right duration-300 overscroll-contain"
+        data-lenis-prevent="true"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-hairline p-6">
           <div className="flex items-center gap-2">

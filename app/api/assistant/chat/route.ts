@@ -56,19 +56,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Check for Google Gemini API Key
-    const apiKey =
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-      process.env.GEMINI_API_KEY;
+    // 2. Parse price, category, and keywords from prompt for instant high-relevance search
+    let maxPrice: number | undefined;
+    const priceMatch =
+      userPrompt.match(/(?:under|below|budget|within|up to|₹|rs\.?|around|less than)\s*(\d+[\d,]*)/i) ||
+      userPrompt.match(/(\d+[\d,]*)\s*(?:rs|inr|rupees|bucks)/i);
+    if (priceMatch) {
+      maxPrice = parseInt(priceMatch[1].replace(/,/g, ''), 10);
+    }
 
-    const hasValidKey =
-      apiKey &&
-      !apiKey.includes('placeholder') &&
-      !apiKey.includes('your-gemini-api-key') &&
-      apiKey.trim().length > 10;
+    let searchKeywords = userPrompt;
+    if (productContext) {
+      searchKeywords += ` ${productContext.name}`;
+    }
+
+    // Pre-fetch candidate products to guarantee product listings
+    const preMatchedProducts = await searchStoreProducts({
+      query: searchKeywords,
+      maxPrice,
+      inStockOnly: true,
+    });
 
     // Track recommended products across the response
-    let recommendedProducts: RecommendedProduct[] = [];
+    const recommendedProducts: RecommendedProduct[] = [];
 
     // Helper to persist assistant message after response finishes
     const persistAssistantMessage = async (assistantText: string, products: RecommendedProduct[]) => {
@@ -87,7 +97,17 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // 3. If Gemini is available, attempt real Gemini 2.5 streaming with function calling
+    // 3. Check for Google Gemini API Key
+    const apiKey =
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+      process.env.GEMINI_API_KEY;
+
+    const hasValidKey =
+      apiKey &&
+      !apiKey.includes('placeholder') &&
+      !apiKey.includes('your-gemini-api-key') &&
+      apiKey.trim().length > 10;
+
     if (hasValidKey) {
       try {
         const google = createGoogleGenerativeAI({
@@ -97,10 +117,22 @@ export async function POST(req: NextRequest) {
         const systemInstruction = `${content.assistant.persona}
 Brand: ${brandConfig.name} (${brandConfig.tagline}).
 Catalogue Context: You have access to real-time search via the search_products tool.
-Always use search_products whenever a customer asks for recommendations, outfits, styling advice, price checks, or specific pieces.
+Always use search_products whenever a customer asks for recommendations, outfits, styling advice, price checks, budget queries, or specific pieces.
+
+CRITICAL PRICING & BUDGET INTELLIGENCE:
+- Our handcrafted atelier collections start from ₹2,800 (such as the Handthrown Ceramic Mug Set at ₹2,800, Leather Belt at ₹3,200, Cotton-Linen Wrap Top at ₹3,400, Block-Printed Linen Table Runner at ₹3,600, Woven Raffia Clutch at ₹4,200, etc.).
+- When a customer specifies a budget or price constraint (e.g. "under 1000 rs", "under 3000 rs", "under 5000 rs"):
+  1. Always invoke search_products passing maxPrice and keywords.
+  2. If matching products exist within the customer's budget, present them and highlight their value, materials, and quality.
+  3. If NO products exist within their exact budget (for example, if the customer asks for items under ₹1,000 while our lowest price is ₹2,800):
+     - Think on your own: Transparently and politely acknowledge their budget requirement (e.g., "While our handcrafted atelier collections currently start from ₹2,800...").
+     - NEVER claim or pretend that a piece priced at ₹2,800, ₹5,600, or ₹9,200 is under ₹1,000.
+     - Present the closest, most accessible luxury pieces (e.g. Ceramic Mug Set at ₹2,800, Leather Belt at ₹3,200, or Cotton-Linen Wrap Top at ₹3,400) as the closest luxury alternatives matching their taste.
+  4. Always explain thoughtfully why these specific pieces are great for them.
+
 When replying to a customer's query or search:
-1. Greet them warmly and acknowledge what they specifically searched for or asked about.
-2. Tell them clearly: "According to your requirement, these pieces should be very good for you because..."
+1. Greet them warmly and acknowledge what they specifically asked for or searched.
+2. Provide a clear, personalized explanation: e.g., "According to your requirement, these pieces are the closest and most suitable fit because..."
 3. Detail the exact reasons why the selected silhouettes, fabrics (e.g. breathable linen, mulberry silk, organic cotton), and drape match their personal style or occasion.
 4. Keep responses personal, warm, thoughtful, and consultative.
 ${
@@ -119,7 +151,7 @@ ${
           tools: {
             search_products: tool({
               description:
-                'Search for in-stock products in the Maison Vale catalogue by category, price, keywords, or occasion.',
+                'Search for in-stock products in the Maison Vale catalogue by category, price, keywords, or occasion. If no products are under a requested budget, it returns the closest available pieces sorted by price.',
               inputSchema: z.object({
                 query: z.string().optional().describe('Keywords such as linen, wedding, dress, shirt, wrap, table runner'),
                 category: z.string().optional().describe('Category name or slug'),
@@ -135,6 +167,7 @@ ${
                   slug: p.slug,
                   category: p.category,
                   basePrice: p.basePrice,
+                  priceFormatted: `₹${p.basePrice.toLocaleString('en-IN')}`,
                   stock: p.variants.reduce((s, v) => s + v.stock, 0),
                   colors: p.variants.map((v) => v.color).filter(Boolean),
                   sizes: p.variants.map((v) => v.size).filter(Boolean),
@@ -156,6 +189,11 @@ ${
                 controller.enqueue(
                   encoder.encode(`event: delta\ndata: ${JSON.stringify({ text: chunk })}\n\n`)
                 );
+              }
+
+              // If Gemini didn't trigger the tool but pre-matched products exist, include them
+              if (recommendedProducts.length === 0 && preMatchedProducts.length > 0) {
+                recommendedProducts.push(...preMatchedProducts);
               }
 
               // Deduplicate recommended products
@@ -198,40 +236,32 @@ ${
     }
 
     // 4. Smart Stylist Fallback Engine (runs when API key is missing or call encounters quota limit)
-    // Parse query for budget, category, or styling cues
-    let maxPrice: number | undefined;
-    const priceMatch = userPrompt.match(/(?:under|below|budget|within|up to|₹|rs\.?)\s*(\d+[\d,]*)/i);
-    if (priceMatch) {
-      maxPrice = parseInt(priceMatch[1].replace(/,/g, ''), 10);
+    let fallbackProducts = preMatchedProducts;
+    if (fallbackProducts.length === 0) {
+      const generalProducts = await searchStoreProducts({ inStockOnly: true, maxPrice });
+      fallbackProducts = generalProducts.slice(0, 4);
     }
-
-    let searchKeywords = userPrompt;
-    if (productContext) {
-      searchKeywords += ` ${productContext.name}`;
-    }
-
-    const matchedProducts = await searchStoreProducts({
-      query: searchKeywords,
-      maxPrice: maxPrice,
-      inStockOnly: true,
-    });
 
     // Generate warm, personalized editorial narrative
     let fallbackText = '';
     const cleanSearchQuery = userPrompt.trim();
-    if (matchedProducts.length > 0) {
-      if (maxPrice) {
+    if (maxPrice) {
+      const lowestAvailablePrice =
+        fallbackProducts.length > 0
+          ? Math.min(...fallbackProducts.map((p) => p.basePrice))
+          : 2800;
+
+      if (lowestAvailablePrice <= maxPrice) {
         fallbackText = `According to your requirement under ₹${maxPrice.toLocaleString('en-IN')}, I have personally selected these pieces that should be an exceptional fit for you. Each piece below combines breathable natural fibers, relaxed tailoring, and effortless elegance:`;
-      } else if (productContext) {
-        fallbackText = `According to your style requirement for pairing with the ${productContext.name}, these complementary pieces will work beautifully for you to create a cohesive, elevated look:`;
       } else {
-        fallbackText = `Based on what you're looking for, according to your requirement these pieces should be very good for you. Each selection highlights our signature craftsmanship, premium drape, and versatile comfort:`;
+        fallbackText = `While our handcrafted artisan collections currently start from ₹${lowestAvailablePrice.toLocaleString('en-IN')} (such as our ${fallbackProducts[0]?.name || 'Ceramic Mug Set'} at ₹${(fallbackProducts[0]?.basePrice || 2800).toLocaleString('en-IN')}), according to your requirement I have curated our closest, most accessible luxury pieces for you. Each selection below reflects our signature craftsmanship, natural materials, and timeless design:`;
       }
+    } else if (productContext) {
+      fallbackText = `According to your style requirement for pairing with the ${productContext.name}, these complementary pieces will work beautifully for you to create a cohesive, elevated look:`;
+    } else if (cleanSearchQuery) {
+      fallbackText = `Based on what you're looking for ("${cleanSearchQuery}"), according to your requirement these pieces should be very good for you. Each selection highlights our signature craftsmanship, premium drape, and versatile comfort:`;
     } else {
-      // If no exact match with constraints, return top featured in-stock pieces
-      const generalProducts = await searchStoreProducts({ inStockOnly: true });
-      matchedProducts.push(...generalProducts.slice(0, 3));
-      fallbackText = `According to your search for "${cleanSearchQuery}", here are signature pieces from our atelier that would be an excellent match for your personal wardrobe:`;
+      fallbackText = `According to your requirement, here is a curated selection of signature pieces from our atelier tailored for your personal wardrobe:`;
     }
 
     // Stream the fallback response smoothly to the client
@@ -249,16 +279,16 @@ ${
         }
 
         controller.enqueue(
-          encoder.encode(`event: products\ndata: ${JSON.stringify(matchedProducts)}\n\n`)
+          encoder.encode(`event: products\ndata: ${JSON.stringify(fallbackProducts)}\n\n`)
         );
 
         controller.enqueue(
           encoder.encode(
-            `event: done\ndata: ${JSON.stringify({ conversationId, totalProducts: matchedProducts.length })}\n\n`
+            `event: done\ndata: ${JSON.stringify({ conversationId, totalProducts: fallbackProducts.length })}\n\n`
           )
         );
 
-        await persistAssistantMessage(fallbackText, matchedProducts);
+        await persistAssistantMessage(fallbackText, fallbackProducts);
         controller.close();
       },
     });

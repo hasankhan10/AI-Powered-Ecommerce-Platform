@@ -11,6 +11,57 @@ export interface AssistantSearchParams {
   inStockOnly?: boolean;
 }
 
+// Semantic synonyms and intent expansion dictionary
+const SYNONYMS: Record<string, string[]> = {
+  // Occasions
+  wedding: ['silk', 'linen', 'trouser', 'shirt', 'clutch', 'scarf', 'wrap', 'dress', 'blazer'],
+  summer: ['linen', 'cotton', 'silk', 'raffia', 'wrap', 'shirt', 'dress'],
+  evening: ['silk', 'clutch', 'blazer', 'trouser', 'scarf', 'perfume', 'oud'],
+  dinner: ['linen', 'silk', 'clutch', 'shirt', 'perfume'],
+  party: ['silk', 'clutch', 'trouser', 'wrap', 'scarf', 'perfume', 'oud'],
+  festive: ['silk', 'linen', 'scarf', 'clutch', 'perfume'],
+  formal: ['blazer', 'trouser', 'silk', 'shirt', 'clutch'],
+  casual: ['shirt', 'trouser', 'wrap', 'linen', 'cotton'],
+  resort: ['linen', 'wrap', 'raffia', 'cotton', 'shirt'],
+  winter: ['cashmere', 'wool', 'blazer', 'scarf', 'wrap', 'tobacco'],
+
+  // Categories & Items
+  shirt: ['shirt', 'tunic', 'top', 'blouse', 'apparel'],
+  shirts: ['shirt', 'tunic', 'top', 'blouse', 'apparel'],
+  dress: ['dress', 'gown', 'wrap', 'tunic', 'silk'],
+  dresses: ['dress', 'gown', 'wrap', 'tunic', 'silk'],
+  pant: ['trouser', 'pant', 'pants', 'bottom'],
+  pants: ['trouser', 'pant', 'pants', 'bottom'],
+  trouser: ['trouser', 'pant', 'pants', 'bottom'],
+  trousers: ['trouser', 'pant', 'pants', 'bottom'],
+  perfume: ['perfume', 'parfumerie', 'oud', 'fragrance', 'extrait', 'scent', 'amber', 'vetiver'],
+  perfumes: ['perfume', 'parfumerie', 'oud', 'fragrance', 'extrait', 'scent', 'amber', 'vetiver'],
+  fragrance: ['perfume', 'parfumerie', 'oud', 'fragrance', 'extrait', 'scent', 'amber', 'vetiver'],
+  fragrances: ['perfume', 'parfumerie', 'oud', 'fragrance', 'extrait', 'scent', 'amber', 'vetiver'],
+  scent: ['perfume', 'oud', 'fragrance', 'scent', 'amber', 'candle'],
+  scents: ['perfume', 'oud', 'fragrance', 'scent', 'amber', 'candle'],
+  oud: ['oud', 'perfume', 'fragrance', 'extrait', 'imperial'],
+  bag: ['bag', 'clutch', 'tote', 'handbag', 'raffia', 'leather', 'accessories'],
+  bags: ['bag', 'clutch', 'tote', 'handbag', 'raffia', 'leather', 'accessories'],
+  clutch: ['clutch', 'bag', 'handbag', 'accessories'],
+  scarf: ['scarf', 'wrap', 'silk', 'accessories'],
+  scarves: ['scarf', 'wrap', 'silk', 'accessories'],
+  wrap: ['wrap', 'scarf', 'dress', 'silk', 'linen'],
+  candle: ['candle', 'scent', 'home', 'living'],
+  candles: ['candle', 'scent', 'home', 'living'],
+  home: ['candle', 'mug', 'runner', 'ceramic', 'decor', 'living'],
+  living: ['candle', 'mug', 'runner', 'ceramic', 'decor', 'living'],
+  gift: ['perfume', 'scarf', 'clutch', 'candle', 'mug', 'runner', 'belt', 'oud'],
+  gifting: ['perfume', 'scarf', 'clutch', 'candle', 'mug', 'runner', 'belt', 'oud'],
+  men: ['shirt', 'trouser', 'oud', 'blazer', 'perfume'],
+  mens: ['shirt', 'trouser', 'oud', 'blazer', 'perfume'],
+  women: ['dress', 'silk', 'clutch', 'wrap', 'scarf', 'shirt', 'trouser', 'perfume'],
+  womens: ['dress', 'silk', 'clutch', 'wrap', 'scarf', 'shirt', 'trouser', 'perfume'],
+  linen: ['linen', 'shirt', 'trouser', 'wrap', 'runner'],
+  silk: ['silk', 'wrap', 'scarf', 'dress', 'tunic'],
+  cotton: ['cotton', 'shirt', 'trouser', 'apparel'],
+};
+
 export async function searchStoreProducts(
   params: AssistantSearchParams
 ): Promise<RecommendedProduct[]> {
@@ -45,7 +96,20 @@ export async function searchStoreProducts(
     // Filter active products
     let matching = products.filter((p) => p.status !== 'ARCHIVED');
 
-    // Filter by category if provided
+    // Filter by stock (default true)
+    const inStockOnly = params.inStockOnly !== false;
+    if (inStockOnly) {
+      const inStockList = matching.filter((p) => {
+        const pVariants = variantsByProduct.get(p.id) || [];
+        const totalStock = pVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
+        return totalStock > 0;
+      });
+      if (inStockList.length > 0) {
+        matching = inStockList;
+      }
+    }
+
+    // Filter by category if explicitly specified
     if (params.category) {
       const catQuery = params.category.toLowerCase().trim();
       const matchedCatId =
@@ -53,108 +117,141 @@ export async function searchStoreProducts(
         categories.find((c) => c.name.toLowerCase().includes(catQuery))?.id;
 
       if (matchedCatId) {
-        matching = matching.filter((p) => p.categoryId === matchedCatId);
+        const catFiltered = matching.filter((p) => p.categoryId === matchedCatId);
+        if (catFiltered.length > 0) {
+          matching = catFiltered;
+        }
       }
     }
 
-    // Semantic synonyms for lifestyle occasions and aesthetics
-    const OCCASION_SYNONYMS: Record<string, string[]> = {
-      wedding: ['silk', 'linen', 'trouser', 'shirt', 'clutch', 'scarf', 'wrap'],
-      summer: ['linen', 'cotton', 'silk', 'raffia', 'wrap', 'shirt'],
-      evening: ['silk', 'clutch', 'blazer', 'trouser', 'scarf'],
-      dinner: ['linen', 'silk', 'clutch', 'shirt'],
-      party: ['silk', 'clutch', 'trouser', 'wrap', 'scarf'],
-      festive: ['silk', 'linen', 'scarf', 'clutch'],
-      formal: ['blazer', 'trouser', 'silk', 'shirt'],
-      casual: ['shirt', 'trouser', 'wrap', 'linen'],
-      resort: ['linen', 'wrap', 'raffia', 'cotton'],
-      gift: ['scarf', 'clutch', 'candle', 'mug', 'runner', 'belt'],
-      gifting: ['scarf', 'clutch', 'candle', 'mug', 'runner', 'belt'],
-      home: ['candle', 'mug', 'runner', 'ceramic'],
+    // Helper to extract lowest price for a product
+    const getProductLowestPrice = (p: typeof products[0]) => {
+      const base = parseFloat(p.basePrice.toString());
+      const pVariants = variantsByProduct.get(p.id) || [];
+      return pVariants.length
+        ? Math.min(...pVariants.map((v) => parseFloat(v.price.toString())))
+        : base;
     };
 
-    // Filter by query keywords with semantic expansion
+    // Filter by price range intelligently
+    let hasStrictMaxPriceMatch = false;
+    if (params.maxPrice !== undefined && params.maxPrice > 0) {
+      const targetMax = params.maxPrice as number;
+      const priceFiltered = matching.filter((p) => getProductLowestPrice(p) <= targetMax);
+      if (priceFiltered.length > 0) {
+        matching = priceFiltered;
+        hasStrictMaxPriceMatch = true;
+      } else {
+        // No items <= maxPrice exist in the catalogue:
+        // Sort products by lowest price ascending so the user receives the closest available luxury pieces!
+        matching.sort((a, b) => getProductLowestPrice(a) - getProductLowestPrice(b));
+      }
+    }
+
+    if (params.minPrice !== undefined && params.minPrice > 0) {
+      const targetMin = params.minPrice as number;
+      const minFiltered = matching.filter((p) => {
+        const base = parseFloat(p.basePrice.toString());
+        const pVariants = variantsByProduct.get(p.id) || [];
+        const highestVariantPrice = pVariants.length
+          ? Math.max(...pVariants.map((v) => parseFloat(v.price.toString())))
+          : base;
+        return highestVariantPrice >= targetMin;
+      });
+      if (minFiltered.length > 0) {
+        matching = minFiltered;
+      }
+    }
+
+    // Relevance scoring for search query tokens
+    const scoredProducts: { product: typeof products[0]; score: number }[] = [];
+
     if (params.query && params.query.trim()) {
+      const stopWords = new Set([
+        'and', 'for', 'the', 'with', 'under', 'something', 'piece', 'pieces',
+        'want', 'need', 'show', 'best', 'good', 'some', 'give', 'look', 'looking',
+        'please', 'tell', 'about', 'recommend', 'what', 'have', 'your', 'like', 'this', 'that', 'from',
+        'rs', 'rupee', 'rupees', 'inr', 'price', 'budget', 'cost', 'below', 'around'
+      ]);
+
       const rawTokens = params.query
         .toLowerCase()
         .replace(/[^\w\s]/g, '')
         .split(/\s+/)
-        .filter((t) => t.length > 2 && !['and', 'for', 'the', 'with', 'under', 'something', 'piece', 'pieces'].includes(t));
+        .filter((t) => t.length > 1 && !stopWords.has(t) && !/^\d+$/.test(t));
 
-      const tokens = new Set<string>(rawTokens);
+      const searchTokens = new Set<string>(rawTokens);
       for (const t of rawTokens) {
-        if (OCCASION_SYNONYMS[t]) {
-          OCCASION_SYNONYMS[t].forEach((syn) => tokens.add(syn));
+        // Expand synonyms
+        if (SYNONYMS[t]) {
+          SYNONYMS[t].forEach((syn) => searchTokens.add(syn));
+        }
+        // Stemming s/es
+        if (t.endsWith('s') && t.length > 3) {
+          const stem = t.slice(0, -1);
+          searchTokens.add(stem);
+          if (SYNONYMS[stem]) {
+            SYNONYMS[stem].forEach((syn) => searchTokens.add(syn));
+          }
         }
       }
 
-      const tokenArray = Array.from(tokens);
+      const tokenArray = Array.from(searchTokens);
+
       if (tokenArray.length > 0) {
-        const filtered = matching.filter((p) => {
+        for (const p of matching) {
+          let score = 0;
           const name = p.name.toLowerCase();
           const desc = (p.description || '').toLowerCase();
           const cat = (categoryMap.get(p.categoryId) || '').toLowerCase();
           const pVariants = variantsByProduct.get(p.id) || [];
           const colors = pVariants.map((v) => (v.color || '').toLowerCase()).join(' ');
 
-          // If looking for attire/wedding, prioritize Apparel and Accessories over Home
-          if (
-            (tokens.has('wedding') || tokens.has('party') || tokens.has('dinner')) &&
-            cat.includes('home')
-          ) {
-            return false;
+          for (const token of tokenArray) {
+            if (name.includes(token)) {
+              score += name.startsWith(token) ? 14 : 8;
+            }
+            if (cat.includes(token)) {
+              score += 6;
+            }
+            if (colors.includes(token)) {
+              score += 4;
+            }
+            if (desc.includes(token)) {
+              score += 2;
+            }
           }
 
-          return tokenArray.some(
-            (token) =>
-              name.includes(token) ||
-              desc.includes(token) ||
-              cat.includes(token) ||
-              colors.includes(token)
-          );
-        });
-
-        if (filtered.length > 0) {
-          matching = filtered;
+          if (score > 0) {
+            scoredProducts.push({ product: p, score });
+          }
         }
+
+        // Sort scored products by relevance score descending, then price proximity
+        scoredProducts.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return getProductLowestPrice(a.product) - getProductLowestPrice(b.product);
+        });
       }
     }
 
-    // Filter by price range
-    if (params.maxPrice !== undefined && params.maxPrice > 0) {
-      matching = matching.filter((p) => {
-        const base = parseFloat(p.basePrice.toString());
-        const pVariants = variantsByProduct.get(p.id) || [];
-        const lowestVariantPrice = pVariants.length
-          ? Math.min(...pVariants.map((v) => parseFloat(v.price.toString())))
-          : base;
-        return lowestVariantPrice <= (params.maxPrice as number);
-      });
+    let finalProductList: typeof products[0][] = [];
+    if (scoredProducts.length > 0) {
+      finalProductList = scoredProducts.map((sp) => sp.product);
+    } else {
+      // If no token search matches or query is purely budget-related:
+      if (params.maxPrice !== undefined && params.maxPrice > 0) {
+        // Order strictly from lowest price ascending (closest to budget)
+        finalProductList = [...matching].sort(
+          (a, b) => getProductLowestPrice(a) - getProductLowestPrice(b)
+        );
+      } else {
+        finalProductList = matching;
+      }
     }
 
-    if (params.minPrice !== undefined && params.minPrice > 0) {
-      matching = matching.filter((p) => {
-        const base = parseFloat(p.basePrice.toString());
-        const pVariants = variantsByProduct.get(p.id) || [];
-        const highestVariantPrice = pVariants.length
-          ? Math.max(...pVariants.map((v) => parseFloat(v.price.toString())))
-          : base;
-        return highestVariantPrice >= (params.minPrice as number);
-      });
-    }
-
-    // Filter by stock
-    const inStockOnly = params.inStockOnly !== false; // default true
-    if (inStockOnly) {
-      matching = matching.filter((p) => {
-        const pVariants = variantsByProduct.get(p.id) || [];
-        const totalStock = pVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
-        return totalStock > 0;
-      });
-    }
-
-    // Convert to RecommendedProduct format
-    const results: RecommendedProduct[] = matching.slice(0, 6).map((p) => {
+    // Convert up to 6 products into RecommendedProduct format
+    const results: RecommendedProduct[] = finalProductList.slice(0, 6).map((p) => {
       const pVariants = variantsByProduct.get(p.id) || [];
       return {
         id: p.id,
