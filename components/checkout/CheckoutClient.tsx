@@ -127,12 +127,64 @@ export function CheckoutClient() {
       .catch((err) => console.error('Error fetching checkout shipping settings:', err));
   }, []);
 
+  const [appliedOffer, setAppliedOffer] = useState<{
+    code: string;
+    discountPercent: number;
+    discountAmount: number;
+    title: string;
+  } | null>(null);
+  const [isApplyingOffer, setIsApplyingOffer] = useState(false);
+
   const isFreeShipping =
     shippingSettings.enableFreeDelivery &&
     (cart.subtotal >= shippingSettings.freeDeliveryThreshold || cart.subtotal === 0);
 
   const shippingFee = isFreeShipping ? 0 : shippingSettings.standardDeliveryFee;
-  const grandTotal = cart.subtotal + shippingFee;
+  const discountAmount = appliedOffer ? appliedOffer.discountAmount : 0;
+  const discountedSubtotal = Math.max(0, cart.subtotal - discountAmount);
+  const grandTotal = discountedSubtotal + shippingFee;
+
+  const handleApplyOffer = async (code: string): Promise<boolean> => {
+    setIsApplyingOffer(true);
+    try {
+      const res = await fetch('/api/offers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          subtotal: cart.subtotal,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to apply offer code');
+        return false;
+      }
+
+      setAppliedOffer({
+        code: data.offer.code,
+        discountPercent: data.offer.discountPercent,
+        discountAmount: data.discountAmount,
+        title: data.offer.title,
+      });
+
+      toast.success(
+        `Code "${data.offer.code}" applied: ${data.offer.discountPercent}% OFF (Saved ₹${data.discountAmount.toLocaleString('en-IN')})`,
+        'Offer Applied'
+      );
+      return true;
+    } catch (err: any) {
+      toast.error(err.message || 'Error validating promo code');
+      return false;
+    } finally {
+      setIsApplyingOffer(false);
+    }
+  };
+
+  const handleRemoveOffer = () => {
+    setAppliedOffer(null);
+    toast.info('Promo code removed');
+  };
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,6 +206,7 @@ export function CheckoutClient() {
           customerName: name,
           customerPhone: phone,
           paymentMethod,
+          couponCode: appliedOffer?.code,
           shippingAddress: {
             line1,
             line2,
@@ -356,6 +409,10 @@ export function CheckoutClient() {
             subtotal={cart.subtotal}
             shippingFee={shippingFee}
             grandTotal={grandTotal}
+            appliedOffer={appliedOffer}
+            onApplyOffer={handleApplyOffer}
+            onRemoveOffer={handleRemoveOffer}
+            isApplyingOffer={isApplyingOffer}
           />
         </div>
       </div>

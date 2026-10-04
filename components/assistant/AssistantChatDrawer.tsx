@@ -128,9 +128,7 @@ export function AssistantChatDrawer() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages
-            .filter((m) => !m.isStreaming)
-            .map((m) => ({ role: m.role, content: m.content })),
+          messages: [{ role: 'user', content: messageText }],
           conversationId,
           productContext,
         }),

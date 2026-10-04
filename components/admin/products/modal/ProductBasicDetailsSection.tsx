@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles, RefreshCw } from 'lucide-react';
 import { CategoryQuickCreateBox } from './CategoryQuickCreateBox';
 
 export interface Category {
@@ -24,6 +24,8 @@ interface ProductBasicDetailsSectionProps {
   newCategoryName: string;
   creatingCategory: boolean;
   categoryError: string | null;
+  generatingTitle?: boolean;
+  generatingDescription?: boolean;
   onNameChange: (val: string) => void;
   onSlugChange: (val: string) => void;
   onCategoryChange: (id: string) => void;
@@ -34,6 +36,8 @@ interface ProductBasicDetailsSectionProps {
   onToggleNewCategoryModal: () => void;
   onNewCategoryNameChange: (val: string) => void;
   onCreateCategory: (e: React.FormEvent) => void;
+  onOptimizeTitle?: () => void;
+  onOptimizeDescription?: (tone?: 'editorial' | 'minimal' | 'playful') => void;
 }
 
 export function ProductBasicDetailsSection({
@@ -50,6 +54,8 @@ export function ProductBasicDetailsSection({
   newCategoryName,
   creatingCategory,
   categoryError,
+  generatingTitle = false,
+  generatingDescription = false,
   onNameChange,
   onSlugChange,
   onCategoryChange,
@@ -60,6 +66,8 @@ export function ProductBasicDetailsSection({
   onToggleNewCategoryModal,
   onNewCategoryNameChange,
   onCreateCategory,
+  onOptimizeTitle,
+  onOptimizeDescription,
 }: ProductBasicDetailsSectionProps) {
   const parsedMarketPrice = typeof marketPrice === 'number' ? marketPrice : parseFloat(marketPrice as string) || 0;
 
@@ -71,9 +79,29 @@ export function ProductBasicDetailsSection({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="block text-[10px] uppercase tracking-wider text-text-ondark/70">
-            Product Name *
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="block text-[10px] uppercase tracking-wider text-text-ondark/70">
+              Product Name *
+            </label>
+            {onOptimizeTitle && (
+              <button
+                type="button"
+                onClick={onOptimizeTitle}
+                disabled={generatingTitle || !name.trim()}
+                className="inline-flex items-center gap-1 text-[11px] text-accent-brass hover:text-accent-brass-hover transition-colors font-medium disabled:opacity-40"
+              >
+                {generatingTitle ? (
+                  <>
+                    <RefreshCw size={11} className="animate-spin" /> Optimizing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={11} /> AI Optimize Title
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <input
             type="text"
             required
@@ -203,9 +231,31 @@ export function ProductBasicDetailsSection({
       </div>
 
       <div className="space-y-1">
-        <label className="block text-[10px] uppercase tracking-wider text-text-ondark/70">
-          Editorial Description
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="block text-[10px] uppercase tracking-wider text-text-ondark/70">
+            Editorial Description
+          </label>
+          {onOptimizeDescription && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onOptimizeDescription('editorial')}
+                disabled={generatingDescription || !name.trim()}
+                className="inline-flex items-center gap-1 text-[11px] text-accent-brass hover:text-accent-brass-hover transition-colors font-medium disabled:opacity-40"
+              >
+                {generatingDescription ? (
+                  <>
+                    <RefreshCw size={11} className="animate-spin" /> Writing Story...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={11} /> AI Generate Description
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           rows={3}
           value={description}

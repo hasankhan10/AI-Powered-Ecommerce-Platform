@@ -38,7 +38,11 @@ Tools Available:
 2. get_store_policy: Use to look up specific return, shipping, or exchange guidelines.
 3. escalate_to_human: Use whenever a client explicitly requests to talk to a human agent, senior representative, or when an issue cannot be resolved automatedly.
 
-Never make up tracking numbers or order statuses. Always use the lookup tool. If a ticket is escalated, reassure the client that a Senior Concierge Officer has been assigned and will follow up promptly.`;
+Never make up tracking numbers or order statuses. Always use the lookup tool. If a ticket is escalated, reassure the client that a Senior Concierge Officer has been assigned and will follow up promptly.
+  
+LANGUAGE & TONE MIRRORING (MANDATORY):
+- Detect and reply in the EXACT SAME LANGUAGE, dialect, or vernacular used by the client (e.g. English, Hindi, Hinglish, Bengali, Spanish, French, etc.).
+- Maintain ${brandConfig.name}'s gracious, empathetic concierge tone seamlessly in whatever language or mix the client communicates.`;
 
   if (
     apiKey &&

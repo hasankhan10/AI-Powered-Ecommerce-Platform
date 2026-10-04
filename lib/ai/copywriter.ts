@@ -150,6 +150,92 @@ function generateFallbackCopy(product: ProductCopyContext, tone: CopyTone): stri
   return editorialTemplates[index];
 }
 
+/**
+ * Generate an optimized, luxury-grade product title from a draft name and category.
+ */
+export async function optimizeProductTitle({
+  currentTitle,
+  categoryName,
+  notes,
+}: {
+  currentTitle: string;
+  categoryName?: string;
+  notes?: string;
+}): Promise<string> {
+  const apiKey =
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    process.env.GEMINI_API_KEY;
+
+  const systemInstruction = `You are a luxury fashion brand namer and creative director for ${brandConfig.name}.
+Your job is to transform draft product names into memorable, evocative, luxury product titles (e.g., "linen shirt" -> "Linen Cocoon Shirt", "silk dress" -> "Bangalore Silk Slip Dress", "ceramic cup" -> "Handthrown Stoneware Ceramic Mug", "tote bag" -> "Structured Vegetable-Tanned Leather Tote").
+Rules:
+1. Return ONLY the title itself. No markdown, no quotes, no conversational explanation.
+2. Keep it between 2 to 5 words.
+3. Capitalize in Title Case.
+4. Reflect luxurious natural fibers, artisanal craft, or poetic silhouette.`;
+
+  const userPrompt = `
+Transform and optimize this product title:
+Current Draft Name: "${currentTitle || 'New Piece'}"
+Category: ${categoryName || 'Luxury Collection'}
+${notes ? `Product Notes: "${notes}"` : ''}
+
+Polished Title:
+`.trim();
+
+  if (
+    apiKey &&
+    !apiKey.includes('placeholder') &&
+    !apiKey.includes('your-gemini-api-key') &&
+    apiKey.trim().length > 10
+  ) {
+    try {
+      const google = createGoogleGenerativeAI({ apiKey });
+      const { text } = await generateText({
+        model: google('gemini-2.5-flash'),
+        system: systemInstruction,
+        prompt: userPrompt,
+        temperature: 0.6,
+      });
+
+      if (text && text.trim().length > 0) {
+        return cleanGeneratedTitle(text);
+      }
+    } catch (err) {
+      console.warn('Gemini title optimization failed, using luxury fallback:', err);
+    }
+  }
+
+  return generateFallbackTitle(currentTitle, categoryName);
+}
+
+function cleanGeneratedTitle(text: string): string {
+  return text
+    .trim()
+    .replace(/^["'`]|["'`]$/g, '')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^(Title|Product Name|Optimized Title):\s*/i, '');
+}
+
+function generateFallbackTitle(currentTitle: string, categoryName?: string): string {
+  const words = currentTitle
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  const clean = words.join(' ');
+
+  if (!clean || clean.toLowerCase() === 'new piece') {
+    return categoryName ? `Signature Handcrafted ${categoryName}` : 'Artisanal Cocoon Piece';
+  }
+
+  // If already high quality
+  if (clean.split(' ').length >= 3) return clean;
+
+  const prefixes = ['Artisanal', 'Handcrafted', 'Structured', 'Relaxed', 'Tailored'];
+  const prefix = prefixes[Math.abs(hashCode(clean)) % prefixes.length];
+  return `${prefix} ${clean}`;
+}
+
 function hashCode(str: string): number {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

@@ -4,6 +4,7 @@ import { db } from '@/lib/prisma';
 import { getCart, clearCart } from '@/lib/cart';
 import { sendOrderConfirmationEmail } from '@/lib/email/resend';
 import { getShippingSettings } from '@/lib/db/settings';
+import { validateOfferCode, incrementOfferUsage } from '@/lib/db/offers';
 
 function generateId() {
   return 'c' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
       customerName,
       customerPhone,
       paymentMethod = 'ONLINE',
+      couponCode,
     } = body;
 
     const cart = await getCart();
@@ -36,17 +38,30 @@ export async function POST(req: NextRequest) {
 
     const shippingSettings = await getShippingSettings();
     const subtotal = cart.subtotal;
+
+    // Validate and Apply Offer / Coupon Discount
+    let discount = 0;
+    let appliedOfferCode = '';
+    if (couponCode) {
+      const offerRes = await validateOfferCode(couponCode, subtotal);
+      if (offerRes.valid && offerRes.discountAmount) {
+        discount = offerRes.discountAmount;
+        appliedOfferCode = offerRes.offer?.code || couponCode.toUpperCase();
+      }
+    }
+
+    const discountedSubtotal = Math.max(0, subtotal - discount);
     
     // Dynamic Shipping Calculation based on Admin Settings
     let shipping = 0;
     if (shippingSettings.enableFreeDelivery) {
-      shipping = subtotal >= shippingSettings.freeDeliveryThreshold ? 0 : shippingSettings.standardDeliveryFee;
+      shipping = discountedSubtotal >= shippingSettings.freeDeliveryThreshold ? 0 : shippingSettings.standardDeliveryFee;
     } else {
       shipping = shippingSettings.standardDeliveryFee;
     }
 
     const tax = 0; // Tax included in listed price
-    const total = subtotal + shipping + tax;
+    const total = discountedSubtotal + shipping + tax;
 
     const orderNumber = generateOrderNumber();
     const orderId = generateId();
@@ -87,6 +102,13 @@ export async function POST(req: NextRequest) {
 
     // 3. Handle CASH ON DELIVERY (COD)
     if (paymentMethod === 'COD') {
+      const orderNotes = [
+        'Cash on Delivery — payment to be collected at doorstep',
+        appliedOfferCode ? `Promo Code: ${appliedOfferCode} (-₹${discount.toLocaleString('en-IN')})` : null,
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
       // Create Order with PROCESSING status and PENDING payment (to be collected on delivery)
       await db.orm.public.Order.create({
         id: orderId,
@@ -94,15 +116,19 @@ export async function POST(req: NextRequest) {
         customerId,
         addressId,
         status: 'PROCESSING',
-        subtotal: subtotal.toString(),
+        subtotal: discountedSubtotal.toString(),
         shipping: shipping.toString(),
         tax: tax.toString(),
         total: total.toString(),
         paymentStatus: 'PENDING',
         paymentProvider: 'COD',
         paymentRef: `cod_${Date.now()}`,
-        notes: 'Cash on Delivery — payment to be collected at doorstep',
+        notes: orderNotes,
       });
+
+      if (appliedOfferCode) {
+        await incrementOfferUsage(appliedOfferCode);
+      }
 
       // Populate OrderItems & Decrement Stock & Log Inventory
       for (const item of cart.items) {

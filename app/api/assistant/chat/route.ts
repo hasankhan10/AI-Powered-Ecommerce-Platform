@@ -130,8 +130,13 @@ CRITICAL PRICING & BUDGET INTELLIGENCE:
      - Present the closest, most accessible luxury pieces (e.g. Ceramic Mug Set at ₹2,800, Leather Belt at ₹3,200, or Cotton-Linen Wrap Top at ₹3,400) as the closest luxury alternatives matching their taste.
   4. Always explain thoughtfully why these specific pieces are great for them.
 
+LANGUAGE & TONE MIRRORING (MANDATORY):
+- Detect and ALWAYS reply in the EXACT SAME LANGUAGE, dialect, or vernacular used by the customer (e.g., English, Hindi, Hinglish, Bengali, Spanish, French, Arabic, German, etc.).
+- Match their conversational vibe and vernacular while preserving ${brandConfig.name}'s signature elegance, warmth, and high-touch consultative styling advice.
+- Example: If the user speaks in Hinglish (e.g., "mujhe summer ke liye kuch comfortable dikhao"), reply in smooth, natural, elegant Hinglish. If they speak in English, reply in refined English. Never force English when the user speaks another language or mix.
+
 When replying to a customer's query or search:
-1. Greet them warmly and acknowledge what they specifically asked for or searched.
+1. Greet them warmly and acknowledge what they specifically asked for or searched (in their language).
 2. Provide a clear, personalized explanation: e.g., "According to your requirement, these pieces are the closest and most suitable fit because..."
 3. Detail the exact reasons why the selected silhouettes, fabrics (e.g. breathable linen, mulberry silk, organic cotton), and drape match their personal style or occasion.
 4. Keep responses personal, warm, thoughtful, and consultative.
@@ -144,10 +149,12 @@ ${
         const result = streamText({
           model: google('gemini-2.5-flash'),
           system: systemInstruction,
-          messages: messages.map((m: any) => ({
-            role: m.role === 'assistant' ? 'assistant' : 'user',
-            content: m.content,
-          })),
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt,
+            },
+          ],
           tools: {
             search_products: tool({
               description:
@@ -194,6 +201,12 @@ ${
               // If Gemini didn't trigger the tool but pre-matched products exist, include them
               if (recommendedProducts.length === 0 && preMatchedProducts.length > 0) {
                 recommendedProducts.push(...preMatchedProducts);
+              }
+
+              // Ensure at least top candidate pieces are always returned
+              if (recommendedProducts.length === 0) {
+                const fallbackCatalogue = await searchStoreProducts({ inStockOnly: true, maxPrice });
+                recommendedProducts.push(...fallbackCatalogue.slice(0, 4));
               }
 
               // Deduplicate recommended products
