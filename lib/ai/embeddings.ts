@@ -23,7 +23,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       });
       return embedding;
     } catch (err) {
-      console.warn('Google embedding API call failed, using deterministic semantic embedding fallback:', err);
+      // Fallback to deterministic semantic embedding
     }
   }
 

@@ -1,11 +1,10 @@
-import { generateText } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { centralAIEngine } from '@/lib/ai/engine';
 import { brandConfig } from '@/config/brand.config';
 
 export type CopyTone = 'editorial' | 'minimal' | 'playful';
 
 export interface ProductCopyContext {
-  id: string;
+  id?: string;
   name: string;
   categoryName?: string;
   basePrice?: number | string;
@@ -52,7 +51,7 @@ Keep it elevated and sophisticated — never cheap or gimmicky. 2 engaging, vivi
 };
 
 /**
- * Generate luxury product description tailored to the selected tone.
+ * Generate luxury product description tailored to the selected tone via Central AI Engine.
  */
 export async function generateProductCopy({
   product,
@@ -61,97 +60,17 @@ export async function generateProductCopy({
   product: ProductCopyContext;
   tone: CopyTone;
 }): Promise<string> {
-  const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    process.env.GEMINI_API_KEY;
+  const result = await centralAIEngine.orchestrateCopywriting({
+    product,
+    tone,
+    type: 'DESCRIPTION',
+  });
 
-  const toneConfig = TONE_DEFINITIONS[tone] || TONE_DEFINITIONS.editorial;
-
-  const userPrompt = `
-Generate a captivating product description for the following item:
-
-Product Name: ${product.name}
-Category: ${product.categoryName || 'Luxury Collection'}
-Base Price: ${brandConfig.currency.symbol}${product.basePrice || ''}
-${product.currentDescription ? `Current Draft: "${product.currentDescription}"` : ''}
-
-Tone: ${toneConfig.label.toUpperCase()} (${toneConfig.styleGuide})
-
-Output only the polished, publish-ready product description text. Do not include markdown headers, quotes around the whole text, or introductory remarks.
-`.trim();
-
-  if (
-    apiKey &&
-    !apiKey.includes('placeholder') &&
-    !apiKey.includes('your-gemini-api-key') &&
-    apiKey.trim().length > 10
-  ) {
-    try {
-      const google = createGoogleGenerativeAI({ apiKey });
-      const { text } = await generateText({
-        model: google('gemini-2.5-flash'),
-        system: toneConfig.systemInstruction,
-        prompt: userPrompt,
-        temperature: tone === 'playful' ? 0.8 : tone === 'editorial' ? 0.7 : 0.4,
-      });
-
-      if (text && text.trim().length > 0) {
-        return cleanGeneratedText(text);
-      }
-    } catch (err) {
-      console.warn('Gemini API call failed, falling back to deterministic luxury copy generator:', err);
-    }
-  }
-
-  // Graceful bespoke fallback
-  return generateFallbackCopy(product, tone);
-}
-
-function cleanGeneratedText(text: string): string {
-  return text
-    .trim()
-    .replace(/^["']|["']$/g, '') // remove wrapping quotes
-    .replace(/^#+\s+/gm, '') // remove markdown h1/h2 headings if any
-    .replace(/^(Description|Product Copy):\s*/i, '');
+  return result.text;
 }
 
 /**
- * Deterministic, luxury bespoke copy generator when offline or API key is absent.
- */
-function generateFallbackCopy(product: ProductCopyContext, tone: CopyTone): string {
-  const name = product.name;
-  const category = product.categoryName?.toLowerCase() || 'piece';
-
-  if (tone === 'minimal') {
-    const minimalTemplates = [
-      `Constructed with disciplined restraint, the ${name} pairs architectural geometry with uncompromised material purity. Designed for effortless permanence.`,
-      `A study in understated balance. The ${name} emphasizes raw textural integrity and an unembellished, fluid silhouette.`,
-      `Tailored with singular precision, this ${category} articulates modern proportion through refined natural fibers.`,
-    ];
-    const index = Math.abs(hashCode(name)) % minimalTemplates.length;
-    return minimalTemplates[index];
-  }
-
-  if (tone === 'playful') {
-    const playfulTemplates = [
-      `Meet the ${name} — a vibrant collision of effortless movement and tactile indulgence. Crafted to catch the golden hour light and carry you seamlessly from morning rendezvous into sunlit evenings.\n\nStyle it barefoot on travertine tiles or dressed up with brushed brass accents. It is ease, elevated to an art form.`,
-      `Infused with spirited charm, the ${name} brings an unexpected rhythm to everyday luxury. Its tactile hand-feel and dynamic silhouette make every entrance feel like a quiet statement.\n\nPair with monochromatic staples or let it claim center stage. Confidence has never felt lighter.`,
-    ];
-    const index = Math.abs(hashCode(name)) % playfulTemplates.length;
-    return playfulTemplates[index];
-  }
-
-  // Editorial fallback
-  const editorialTemplates = [
-    `Rooted in the quiet heritage of mindful craftsmanship, the ${name} is an homage to timeless form and organic tactile depth. Woven from carefully selected fibres, each line and seam is considered to achieve an instinctive, effortless drape.\n\nDesigned to live gracefully beyond seasons, this ${category} develops a richer character with every wear — capturing the subtle warmth of the Mediterranean and the poise of contemporary tailoring.`,
-    `A masterclass in textural dialogue, the ${name} marries structural integrity with fluid sensuality. Every contour reflects the meticulous patience of our artisan ateliers, celebrating the natural variations of uncompromised textiles.\n\nSubtle yet unforgettable, it serves as the cornerstone for an intentional, curated wardrobe designed to endure.`,
-  ];
-  const index = Math.abs(hashCode(name)) % editorialTemplates.length;
-  return editorialTemplates[index];
-}
-
-/**
- * Generate an optimized, luxury-grade product title from a draft name and category.
+ * Generate an optimized, luxury-grade product title via Central AI Engine.
  */
 export async function optimizeProductTitle({
   currentTitle,
@@ -162,85 +81,14 @@ export async function optimizeProductTitle({
   categoryName?: string;
   notes?: string;
 }): Promise<string> {
-  const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    process.env.GEMINI_API_KEY;
+  const result = await centralAIEngine.orchestrateCopywriting({
+    product: {
+      name: currentTitle,
+      categoryName,
+    },
+    type: 'TITLE',
+    notes,
+  });
 
-  const systemInstruction = `You are a luxury fashion brand namer and creative director for ${brandConfig.name}.
-Your job is to transform draft product names into memorable, evocative, luxury product titles (e.g., "linen shirt" -> "Linen Cocoon Shirt", "silk dress" -> "Bangalore Silk Slip Dress", "ceramic cup" -> "Handthrown Stoneware Ceramic Mug", "tote bag" -> "Structured Vegetable-Tanned Leather Tote").
-Rules:
-1. Return ONLY the title itself. No markdown, no quotes, no conversational explanation.
-2. Keep it between 2 to 5 words.
-3. Capitalize in Title Case.
-4. Reflect luxurious natural fibers, artisanal craft, or poetic silhouette.`;
-
-  const userPrompt = `
-Transform and optimize this product title:
-Current Draft Name: "${currentTitle || 'New Piece'}"
-Category: ${categoryName || 'Luxury Collection'}
-${notes ? `Product Notes: "${notes}"` : ''}
-
-Polished Title:
-`.trim();
-
-  if (
-    apiKey &&
-    !apiKey.includes('placeholder') &&
-    !apiKey.includes('your-gemini-api-key') &&
-    apiKey.trim().length > 10
-  ) {
-    try {
-      const google = createGoogleGenerativeAI({ apiKey });
-      const { text } = await generateText({
-        model: google('gemini-2.5-flash'),
-        system: systemInstruction,
-        prompt: userPrompt,
-        temperature: 0.6,
-      });
-
-      if (text && text.trim().length > 0) {
-        return cleanGeneratedTitle(text);
-      }
-    } catch (err) {
-      console.warn('Gemini title optimization failed, using luxury fallback:', err);
-    }
-  }
-
-  return generateFallbackTitle(currentTitle, categoryName);
-}
-
-function cleanGeneratedTitle(text: string): string {
-  return text
-    .trim()
-    .replace(/^["'`]|["'`]$/g, '')
-    .replace(/^#+\s+/gm, '')
-    .replace(/^(Title|Product Name|Optimized Title):\s*/i, '');
-}
-
-function generateFallbackTitle(currentTitle: string, categoryName?: string): string {
-  const words = currentTitle
-    .trim()
-    .split(/\s+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-  const clean = words.join(' ');
-
-  if (!clean || clean.toLowerCase() === 'new piece') {
-    return categoryName ? `Signature Handcrafted ${categoryName}` : 'Artisanal Cocoon Piece';
-  }
-
-  // If already high quality
-  if (clean.split(' ').length >= 3) return clean;
-
-  const prefixes = ['Artisanal', 'Handcrafted', 'Structured', 'Relaxed', 'Tailored'];
-  const prefix = prefixes[Math.abs(hashCode(clean)) % prefixes.length];
-  return `${prefix} ${clean}`;
-}
-
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
+  return result.text;
 }

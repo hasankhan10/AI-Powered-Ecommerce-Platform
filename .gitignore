@@ -49,3 +49,4 @@ next-env.d.ts
 
 # Internal Agent Artifacts (Keep clean repo)
 .agents/
+scratch/
