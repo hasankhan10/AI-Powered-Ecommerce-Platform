@@ -143,6 +143,7 @@ export function AssistantChatDrawer() {
       let assistantText = '';
       let receivedProducts: RecommendedProduct[] = [];
       let buffer = '';
+      let currentEvent = 'delta';
 
       while (true) {
         const { value, done } = await reader.read();
@@ -151,8 +152,6 @@ export function AssistantChatDrawer() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
-        let currentEvent = 'delta';
 
         for (const line of lines) {
           if (line.startsWith('event: ')) {
@@ -193,7 +192,7 @@ export function AssistantChatDrawer() {
           msg.id === assistantMessageId
             ? {
                 ...msg,
-                content: assistantText || content.assistant.errorMessage,
+                content: assistantText || (receivedProducts.length > 0 ? "Here are our curated recommendations for you:" : content.assistant.errorMessage),
                 products: receivedProducts,
                 isStreaming: false,
               }

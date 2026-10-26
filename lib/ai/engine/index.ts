@@ -219,10 +219,31 @@ ${
                 productIds: verifiedProducts.map((p) => p.id),
               });
 
-              controller.close();
             } catch (streamErr) {
-              console.error('Error during AI assistant stream processing:', streamErr);
-              controller.error(streamErr);
+              console.error('Error during AI assistant stream processing, recovering gracefully:', streamErr);
+              try {
+                const fallbackProds = catalogResult.products.length > 0 ? catalogResult.products : recommendedProducts;
+                const recoveryText = `According to your requirement, here is our curated selection of signature pieces from our atelier:`;
+                controller.enqueue(
+                  encoder.encode(`event: delta\ndata: ${JSON.stringify({ text: recoveryText })}\n\n`)
+                );
+                if (fallbackProds.length > 0) {
+                  controller.enqueue(
+                    encoder.encode(`event: products\ndata: ${JSON.stringify(fallbackProds)}\n\n`)
+                  );
+                }
+                controller.enqueue(
+                  encoder.encode(
+                    `event: done\ndata: ${JSON.stringify({
+                      conversationId,
+                      totalProducts: fallbackProds.length,
+                    })}\n\n`
+                  )
+                );
+                controller.close();
+              } catch (recoveryErr) {
+                controller.error(streamErr);
+              }
             }
           },
         });
@@ -380,6 +401,7 @@ LANGUAGE & TONE MIRRORING (MANDATORY):
             get_store_policy: tools.get_store_policy,
             escalate_to_human: tools.escalate_to_human,
           },
+          abortSignal: AbortSignal.timeout(12000),
         });
 
         if (text && text.trim().length > 0) {
@@ -493,6 +515,7 @@ Output ONLY the refined product title (3 to 6 words). No quotes, no markdown.`;
             model: provider(DEFAULT_AI_MODEL),
             prompt,
             temperature: 0.5,
+            abortSignal: AbortSignal.timeout(12000),
           });
 
           if (text && text.trim().length > 0) {
@@ -532,6 +555,7 @@ Output only the polished, publish-ready product description text without markdow
           system: toneConfig.systemInstruction,
           prompt: userPrompt,
           temperature: tone === 'playful' ? 0.8 : tone === 'editorial' ? 0.7 : 0.4,
+          abortSignal: AbortSignal.timeout(12000),
         });
 
         if (text && text.trim().length > 0) {
@@ -587,6 +611,7 @@ ${description ? `Description: "${description}"` : ''}`;
           system: systemInstruction,
           prompt: userPrompt,
           temperature: 0.3,
+          abortSignal: AbortSignal.timeout(12000),
         });
 
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -625,99 +650,36 @@ ${description ? `Description: "${description}"` : ''}`;
     const intent = analyzeIntent(rawQuery, 'SEMANTIC_SEARCH');
     const { constraints } = intent;
 
-    const [products, categories, variants, images] = await Promise.all([
-      db.orm.public.Product.where({}).all(),
-      db.orm.public.Category.where({}).all(),
-      db.orm.public.ProductVariant.where({}).all(),
-      db.orm.public.ProductImage.where({}).all(),
-    ]);
+    const catalogResult = await queryRealCatalog({
+      query: constraints.cleanKeywords || rawQuery,
+      category: constraints.category,
+      maxPrice: constraints.maxPrice,
+      minPrice: constraints.minPrice,
+      limit: req.limit || 8,
+    });
 
-    const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
-    const imageMap = new Map<string, string>();
-    const sortedImages = [...images].sort((a, b) => (a.position || 0) - (b.position || 0));
-    for (const img of sortedImages) {
-      if (!imageMap.has(img.productId)) {
-        imageMap.set(img.productId, img.url);
-      }
-    }
-
-    const variantsByProduct = new Map<string, typeof variants>();
-    for (const vr of variants) {
-      const list = variantsByProduct.get(vr.productId) || [];
-      list.push(vr);
-      variantsByProduct.set(vr.productId, list);
-    }
-
-    // Generate query embedding vector
-    const effectiveQuery = constraints.cleanKeywords || rawQuery;
-    const queryVector = await generateEmbedding(effectiveQuery);
-
-    const activeProducts = products.filter((p) => p.status !== 'ARCHIVED');
-    const scoredProducts: { product: typeof products[0]; score: number; inStock: boolean; price: number }[] = [];
-
-    for (const p of activeProducts) {
-      const pVariants = variantsByProduct.get(p.id) || [];
-      const lowestPrice = pVariants.length
-        ? Math.min(...pVariants.map((v) => parseFloat(v.price.toString())))
-        : parseFloat(p.basePrice.toString());
-      const inStock = pVariants.reduce((sum, v) => sum + (v.stock || 0), 0) > 0;
-
-      // Price filter check
-      if (constraints.maxPrice && lowestPrice > constraints.maxPrice) {
-        continue;
-      }
-      if (constraints.minPrice && lowestPrice < constraints.minPrice) {
-        continue;
-      }
-
-      let score = 0;
-      const lowerName = p.name.toLowerCase();
-      const lowerDesc = (p.description || '').toLowerCase();
-      const lowerCat = (categoryMap.get(p.categoryId) || '').toLowerCase();
-
-      // Lexical token matches
-      const tokens = effectiveQuery.toLowerCase().split(/\s+/).filter(Boolean);
-      for (const tok of tokens) {
-        if (lowerName.includes(tok)) score += 12;
-        if (lowerCat.includes(tok)) score += 6;
-        if (lowerDesc.includes(tok)) score += 2;
-      }
-
-      // Semantic similarity fallback if score > 0 or generic
-      if (score > 0 || tokens.length === 0) {
-        score += 5;
-      }
-
-      scoredProducts.push({
-        product: p,
-        score,
-        inStock,
-        price: lowestPrice,
-      });
-    }
-
-    scoredProducts.sort((a, b) => b.score - a.score || a.price - b.price);
-
-    const limit = req.limit || 8;
-    const finalProducts: SearchEngineProduct[] = scoredProducts.slice(0, limit).map((sp) => ({
-      id: sp.product.id,
-      name: sp.product.name,
-      slug: sp.product.slug,
-      description: sp.product.description || '',
-      price: sp.price,
-      image: imageMap.get(sp.product.id) || '',
-      category: categoryMap.get(sp.product.categoryId) || 'Atelier',
-      inStock: sp.inStock,
-      score: sp.score,
+    const finalProducts: SearchEngineProduct[] = catalogResult.products.map((p, idx) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      description: p.description || '',
+      price: p.basePrice,
+      image: p.image || '',
+      category: p.category || 'Atelier',
+      inStock: p.variants.some((v) => v.stock > 0),
+      score: 100 - idx * 5,
     }));
 
-    const matchingCategories = categories
-      .filter((c) => rawQuery.toLowerCase().includes(c.name.toLowerCase()) || rawQuery.toLowerCase().includes(c.slug.toLowerCase()))
-      .map((c) => ({
-        id: c.id,
-        name: c.name,
-        slug: c.slug,
-        productCount: products.filter((p) => p.categoryId === c.id && p.status !== 'ARCHIVED').length,
+    const categoryNames = Array.from(
+      new Set(catalogResult.products.map((p) => p.category || 'Atelier'))
+    );
+    const matchingCategories = categoryNames
+      .filter((cat) => rawQuery.toLowerCase().includes(cat.toLowerCase()))
+      .map((cat) => ({
+        id: `cat_${cat.toLowerCase().replace(/\s+/g, '_')}`,
+        name: cat,
+        slug: cat.toLowerCase().replace(/\s+/g, '-'),
+        productCount: catalogResult.products.filter((p) => (p.category || 'Atelier') === cat).length,
       }));
 
     return {

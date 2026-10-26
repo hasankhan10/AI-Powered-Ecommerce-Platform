@@ -69,8 +69,8 @@ export async function persistConversationMessage(
       content,
       productRefs: productIds && productIds.length > 0 ? JSON.stringify(productIds) : null,
     });
-  } catch (err) {
-    console.warn('Could not persist message to AssistantMessage table:', err);
+  } catch (err: any) {
+    console.warn('Note: AssistantMessage persistence skipped (database offline or unreachable):', err?.message || err);
   }
 }
 
